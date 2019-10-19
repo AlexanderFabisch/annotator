@@ -8,6 +8,7 @@ import cv2
 
 # TODO
 # * shortcuts for video control
+# * save annotation in CSV (it's the simplest format)
 
 
 class MainWindow(QMainWindow):
