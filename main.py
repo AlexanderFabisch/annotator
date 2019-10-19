@@ -235,7 +235,7 @@ class AnnotatorConfigurationModel:
 
 
 class AnnotationModel:
-    def __init__(self, filename, image_size=(1024, 768)):
+    def __init__(self, filename, image_size=(1280, 720)):
         self.reset(filename, image_size)
 
     def reset(self, filename, image_size):
