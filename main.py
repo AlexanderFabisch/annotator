@@ -19,14 +19,17 @@ class CentralWidget(QWidget):
         self.setLayout(self.layout)
 
         self.annotator_config = AnnotatorConfigurationModel()
+        self.annotation = AnnotationModel("image.jpg")  # TODO
 
         splitter = QSplitter(Qt.Horizontal)
         self.tabs = QTabWidget(self)
         self.config_editor = ConfigurationEditor(self, self.annotator_config)
         self.tabs.addTab(self.config_editor, "Configuration")
+        self.ann_editor = AnnotationEditor(self, self.annotation)  # TODO
+        self.tabs.addTab(self.ann_editor, "Annotation")
         splitter.addWidget(self.tabs)
 
-        self.canvas = ImageCanvas(self, self.annotator_config)
+        self.canvas = ImageCanvas(self, self.annotator_config, self.annotation)
         splitter.addWidget(self.canvas)
 
         # TODO
@@ -61,10 +64,20 @@ class ConfigurationEditor(QWidget):
         self.model.active_color = color
 
 
+class AnnotationEditor(QWidget):
+    def __init__(self, parent, model):
+        super(AnnotationEditor, self).__init__(parent)
+        self.model = model
+        self.layout = QVBoxLayout()
+        self.layout.setAlignment(Qt.AlignTop)
+        self.setLayout(self.layout)
+
+
 class ImageCanvas(QWidget):
-    def __init__(self, parent, config):
+    def __init__(self, parent, config, annotation):
         super(ImageCanvas, self).__init__(parent)
         self.config = config
+        self.annotation = annotation
 
         self.original_img = QImage("image.jpg")
         self.img_view = ImageView(self)
@@ -75,9 +88,6 @@ class ImageCanvas(QWidget):
 
         # temporary variables
         self.started_drag = None
-
-        # results
-        self.bounding_boxes = []
 
     def initUI(self, img):
         self.setWindowTitle("Image annotator")
@@ -96,7 +106,7 @@ class ImageCanvas(QWidget):
         # TODO could be done directly, without overlay image
         painter = QPainter()
         painter.begin(overlay)
-        for topleft, bottomright, color in self.bounding_boxes:
+        for topleft, bottomright, color in self.annotation.bounding_boxes:
             self._draw_rect(painter, topleft, bottomright, color)
         self._draw_rect(painter, self.started_drag, (x, y), self.config.active_color)
         painter.end()
@@ -126,7 +136,7 @@ class ImageCanvas(QWidget):
         self.img_view.setPixmap(QPixmap.fromImage(self.img))
 
     def stop_drag(self, x, y):
-        self.bounding_boxes.append(
+        self.annotation.bounding_boxes.append(
             (self.started_drag, self._apply_bounds(x, y), self.config.active_color))
         self.started_drag = None
 
@@ -169,6 +179,15 @@ class AnnotatorConfigurationModel:
 
         # configuration
         self.active_color = 0
+
+
+class AnnotationModel:
+    def __init__(self, filename):
+        self.reset(filename)
+
+    def reset(self, filename):
+        self.filename = filename
+        self.bounding_boxes = []
 
 
 if __name__ == '__main__':
