@@ -6,6 +6,10 @@ import numpy as np
 import cv2
 
 
+# TODO
+# * shortcuts for video control
+
+
 class MainWindow(QMainWindow):
     def __init__(self, filename):
         super(MainWindow, self).__init__()
@@ -114,6 +118,18 @@ class VideoControl(QWidget):
         self.annotation = annotation
         self.image_view = image_view
 
+        self.layout = QVBoxLayout()
+        self.layout.setAlignment(Qt.AlignTop)
+        self.setLayout(self.layout)
+
+        self.button_next_image = QPushButton("Next Image")
+        self.button_next_image.pressed.connect(self.next_image)
+        self.layout.addWidget(self.button_next_image)
+
+    def next_image(self):
+        self.annotation.next_image()
+        self.image_view.update_image()
+
 
 class ImageCanvas(QWidget):
     def __init__(self, parent, config, annotation):
@@ -121,24 +137,17 @@ class ImageCanvas(QWidget):
         self.config = config
         self.annotation = annotation
 
-        data = self.annotation.image
-        self.original_img = QImage(
-            data.data, data.shape[1], data.shape[0], 3 * data.shape[1],
-            QImage.Format_RGB888).rgbSwapped()
+        self.setWindowTitle("Image annotator")
+
         self.img_view = ImageView(self)
-        self.initUI(self.original_img)
         self.img_view.start_drag.connect(self.start_drag)
         self.img_view.drag.connect(self.drag)
         self.img_view.stop_drag.connect(self.stop_drag)
 
+        self.update_image()
+
         # temporary variables
         self.started_drag = None
-
-    def initUI(self, img):
-        self.setWindowTitle("Image annotator")
-    
-        overlay = self._new_overlay(img)
-        self._apply_and_show_overlay(img, overlay)
 
     def start_drag(self, x, y):
         self.started_drag = self._apply_bounds(x, y)
@@ -194,6 +203,15 @@ class ImageCanvas(QWidget):
         # TODO
         return x, y
 
+    def update_image(self):
+        data = self.annotation.image
+        self.original_img = QImage(
+            data.data, data.shape[1], data.shape[0], 3 * data.shape[1],
+            QImage.Format_RGB888).rgbSwapped()
+
+        overlay = self._new_overlay(self.original_img)
+        self._apply_and_show_overlay(self.original_img, overlay)
+
     def update_annotation(self):
         overlay = self._new_overlay(self.original_img)
         painter = QPainter()
@@ -246,17 +264,21 @@ class AnnotatorConfigurationModel:
 
 class AnnotationModel:
     def __init__(self, filename, image_size=(1280, 720)):
-        self.reset(filename, image_size)
-
-    def reset(self, filename, image_size):
         self.filename = filename
+        self.image_size = image_size
         self.cap = cv2.VideoCapture(self.filename)
+        self.image_idx = 0
+        self.next_image()
+
+    def next_image(self):
         assert self.cap.isOpened()
         ret, image = self.cap.read()  # TODO ret?
-        self.image = cv2.resize(image, image_size)
+        self.image = cv2.resize(image, self.image_size)
+        self.reset_annotation()
+        self.image_idx += 1
 
+    def reset_annotation(self):
         self.bounding_boxes = []
-
         self.selected_annotation = None
 
     def select_prev(self):
