@@ -4,23 +4,12 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QLab
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
 
 
-# https://www.riverbankcomputing.com/static/Docs/PyQt4/qlabel.html
-class ImageView(QLabel):
-    def __init__(self, *args, **kwargs):
-        super(ImageView, self).__init__(*args, **kwargs)
-    
-    start_drag = pyqtSignal(int, int)
-    drag = pyqtSignal(int, int)
-    stop_drag = pyqtSignal(int, int)
-
-    def mousePressEvent(self, ev):
-        self.start_drag.emit(ev.pos().x(), ev.pos().y())
-    
-    def mouseMoveEvent(self, ev):
-        self.drag.emit(ev.pos().x(), ev.pos().y())
-
-    def mouseReleaseEvent(self, ev):
-        self.stop_drag.emit(ev.pos().x(), ev.pos().y())
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super(MainWindow, self).__init__()
+        self.central_widget = CentralWidget(self)
+        self.setCentralWidget(self.central_widget)
+        self.show()
 
 
 class CentralWidget(QWidget):
@@ -47,26 +36,23 @@ class CentralWidget(QWidget):
         self.layout.addWidget(splitter)
 
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super(MainWindow, self).__init__()
-        self.central_widget = CentralWidget(self)
-        self.setCentralWidget(self.central_widget)
-        self.show()
+# https://www.riverbankcomputing.com/static/Docs/PyQt4/qlabel.html
+class ImageView(QLabel):
+    def __init__(self, *args, **kwargs):
+        super(ImageView, self).__init__(*args, **kwargs)
+    
+    start_drag = pyqtSignal(int, int)
+    drag = pyqtSignal(int, int)
+    stop_drag = pyqtSignal(int, int)
 
+    def mousePressEvent(self, ev):
+        self.start_drag.emit(ev.pos().x(), ev.pos().y())
+    
+    def mouseMoveEvent(self, ev):
+        self.drag.emit(ev.pos().x(), ev.pos().y())
 
-class AnnotatorConfigurationModel(QObject):
-    def __init__(self):
-        # configuration options    
-        self.bb_colors = [
-            QColor(255, 0, 0, 127),
-            QColor(0, 255, 0, 127),
-            QColor(0, 0, 255, 127),
-            # TODO define more colors
-        ]
-
-        # configuration
-        self.active_color = 0
+    def mouseReleaseEvent(self, ev):
+        self.stop_drag.emit(ev.pos().x(), ev.pos().y())
 
 
 class ImageCanvas(QWidget):
@@ -145,6 +131,20 @@ class ImageCanvas(QWidget):
     def _apply_bounds(self, x, y):
         # TODO
         return x, y
+
+
+class AnnotatorConfigurationModel(QObject):
+    def __init__(self):
+        # configuration options    
+        self.bb_colors = [
+            QColor(255, 0, 0, 127),
+            QColor(0, 255, 0, 127),
+            QColor(0, 0, 255, 127),
+            # TODO define more colors
+        ]
+
+        # configuration
+        self.active_color = 0
 
 
 if __name__ == '__main__':
