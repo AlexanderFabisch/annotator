@@ -2,25 +2,27 @@ import sys
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
+import numpy as np
+import cv2
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, filename):
         super(MainWindow, self).__init__()
-        self.central_widget = CentralWidget(self)
+        self.central_widget = CentralWidget(self, filename)
         self.setCentralWidget(self.central_widget)
         self.resize(1800, 800)  # TODO
         self.show()
 
 
 class CentralWidget(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, filename):
         super(CentralWidget, self).__init__(parent)
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
 
         self.annotator_config = AnnotatorConfigurationModel()
-        self.annotation = AnnotationModel("image.jpg")  # TODO
+        self.annotation = AnnotationModel(filename)
 
         splitter = QSplitter(Qt.Horizontal)
 
@@ -109,7 +111,10 @@ class ImageCanvas(QWidget):
         self.config = config
         self.annotation = annotation
 
-        self.original_img = QImage("image.jpg")
+        data = self.annotation.image
+        self.original_img = QImage(
+            data.data, data.shape[1], data.shape[0], 3 * data.shape[1],
+            QImage.Format_RGB888).rgbSwapped()
         self.img_view = ImageView(self)
         self.initUI(self.original_img)
         self.img_view.start_drag.connect(self.start_drag)
@@ -230,11 +235,16 @@ class AnnotatorConfigurationModel:
 
 
 class AnnotationModel:
-    def __init__(self, filename):
-        self.reset(filename)
+    def __init__(self, filename, image_size=(1024, 768)):
+        self.reset(filename, image_size)
 
-    def reset(self, filename):
+    def reset(self, filename, image_size):
         self.filename = filename
+        self.cap = cv2.VideoCapture(self.filename)
+        assert self.cap.isOpened()
+        ret, image = self.cap.read()  # TODO ret?
+        self.image = cv2.resize(image, image_size)
+
         self.bounding_boxes = []
 
         self.selected_annotation = None
@@ -273,5 +283,5 @@ class AnnotationModel:
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    win = MainWindow()
+    win = MainWindow("video.mp4")
     sys.exit(app.exec_())
