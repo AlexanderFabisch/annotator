@@ -9,6 +9,7 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
         self.central_widget = CentralWidget(self)
         self.setCentralWidget(self.central_widget)
+        self.resize(1800, 800)  # TODO
         self.show()
 
 
@@ -33,7 +34,6 @@ class CentralWidget(QWidget):
         self.tabs.addTab(self.ann_editor, "Annotation")
         splitter.addWidget(self.tabs)
 
-        # TODO
         policy = QSizePolicy()
         policy.setHorizontalPolicy(QSizePolicy.Maximum)
         policy.setVerticalPolicy(QSizePolicy.Maximum)
@@ -86,12 +86,20 @@ class AnnotationEditor(QWidget):
         selector_layout.addWidget(self.button_next)
         self.layout.addWidget(self.selector)
 
+        self.delete = QPushButton("Delete Selection")
+        self.delete.pressed.connect(self.delete_selection)
+        self.layout.addWidget(self.delete)
+
     def select_prev(self):
         self.model.select_prev()
         self.image_view.update_annotation()
 
     def select_next(self):
         self.model.select_next()
+        self.image_view.update_annotation()
+
+    def delete_selection(self):
+        self.model.delete_selection()
         self.image_view.update_annotation()
 
 
@@ -113,7 +121,6 @@ class ImageCanvas(QWidget):
 
     def initUI(self, img):
         self.setWindowTitle("Image annotator")
-        #self.setGeometry(10, 10, 640, 480)
     
         overlay = self._new_overlay(img)
         self._apply_and_show_overlay(img, overlay)
@@ -253,6 +260,15 @@ class AnnotationModel:
             self.selected_annotation += 1
             if self.selected_annotation >= len(self.bounding_boxes):
                 self.selected_annotation -= 1
+    
+    def delete_selection(self):
+        if self.selected_annotation is None:
+            return
+        self.bounding_boxes.pop(self.selected_annotation)
+        if self.selected_annotation >= len(self.bounding_boxes):
+            self.selected_annotation -= 1
+        if len(self.bounding_boxes) == 0:
+            self.selected_annotation = None
 
 
 if __name__ == '__main__':
