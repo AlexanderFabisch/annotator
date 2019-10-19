@@ -126,8 +126,16 @@ class VideoControl(QWidget):
         self.button_next_image.pressed.connect(self.next_image)
         self.layout.addWidget(self.button_next_image)
 
+        self.button_skip = QPushButton("Skip 100 Frames")  # TODO magic number
+        self.button_skip.pressed.connect(self.skip)
+        self.layout.addWidget(self.button_skip)
+
     def next_image(self):
         self.annotation.next_image()
+        self.image_view.update_image()
+
+    def skip(self):
+        self.annotation.skip()
         self.image_view.update_image()
 
 
@@ -271,11 +279,20 @@ class AnnotationModel:
         self.next_image()
 
     def next_image(self):
+        self.reset_annotation()
+        self.image_idx += 1
+        self._read_image()
+
+    def skip(self):
+        self.reset_annotation()
+        self.image_idx += 100  # TODO magic number
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.image_idx)
+        self._read_image()
+
+    def _read_image(self):
         assert self.cap.isOpened()
         ret, image = self.cap.read()  # TODO ret?
         self.image = cv2.resize(image, self.image_size)
-        self.reset_annotation()
-        self.image_idx += 1
 
     def reset_annotation(self):
         self.bounding_boxes = []
@@ -315,5 +332,5 @@ class AnnotationModel:
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    win = MainWindow("video.mp4")
+    win = MainWindow(sys.argv[1])
     sys.exit(app.exec_())
