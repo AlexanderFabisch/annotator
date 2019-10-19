@@ -36,10 +36,10 @@ class CentralWidget(QWidget):
         # TODO
         policy = QSizePolicy()
         policy.setHorizontalPolicy(QSizePolicy.Maximum)
-        policy.setVerticalPolicy(QSizePolicy.Preferred)
+        policy.setVerticalPolicy(QSizePolicy.Maximum)
         self.canvas.setSizePolicy(policy)
-        splitter.setStretchFactor(0, 0)
-        splitter.setStretchFactor(1, 1)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
 
         self.layout.addWidget(splitter)
 
@@ -87,27 +87,11 @@ class AnnotationEditor(QWidget):
         self.layout.addWidget(self.selector)
 
     def select_prev(self):
-        if self.model.selected_annotation is None:
-            if len(self.model.bounding_boxes) > 0:
-                self.model.selected_annotation = len(self.model.bounding_boxes) - 1
-            else:
-                return
-        else:
-            self.model.selected_annotation -= 1
-            if self.model.selected_annotation < 0:
-                self.model.selected_annotation = 0
+        self.model.select_prev()
         self.image_view.update_annotation()
 
     def select_next(self):
-        if self.model.selected_annotation is None:
-            if len(self.model.bounding_boxes) > 0:
-                self.model.selected_annotation = 0
-            else:
-                return
-        else:
-            self.model.selected_annotation += 1
-            if self.model.selected_annotation >= len(self.model.bounding_boxes):
-                self.model.selected_annotation -= 1
+        self.model.select_next()
         self.image_view.update_annotation()
 
 
@@ -247,6 +231,28 @@ class AnnotationModel:
         self.bounding_boxes = []
 
         self.selected_annotation = None
+
+    def select_prev(self):
+        if self.selected_annotation is None:
+            if len(self.bounding_boxes) > 0:
+                self.selected_annotation = len(self.bounding_boxes) - 1
+            else:
+                return
+        else:
+            self.selected_annotation -= 1
+            if self.selected_annotation < 0:
+                self.selected_annotation = 0
+    
+    def select_next(self):
+        if self.selected_annotation is None:
+            if len(self.bounding_boxes) > 0:
+                self.selected_annotation = 0
+            else:
+                return
+        else:
+            self.selected_annotation += 1
+            if self.selected_annotation >= len(self.bounding_boxes):
+                self.selected_annotation -= 1
 
 
 if __name__ == '__main__':
