@@ -30,10 +30,13 @@ class CentralWidget(QWidget):
         splitter.addWidget(self.canvas)
 
         self.tabs = QTabWidget(self)
+        self.tabs.setMinimumWidth(450)
         self.config_editor = ConfigurationEditor(self, self.annotator_config)
         self.tabs.addTab(self.config_editor, "Configuration")
         self.ann_editor = AnnotationEditor(self, self.annotation, self.canvas)
         self.tabs.addTab(self.ann_editor, "Annotation")
+        self.video_control = VideoControl(self, self.annotation, self.canvas)
+        self.tabs.addTab(self.video_control, "Video")
         splitter.addWidget(self.tabs)
 
         policy = QSizePolicy()
@@ -103,6 +106,13 @@ class AnnotationEditor(QWidget):
     def delete_selection(self):
         self.model.delete_selection()
         self.image_view.update_annotation()
+
+
+class VideoControl(QWidget):
+    def __init__(self, parent, annotation, image_view):
+        super(VideoControl, self).__init__(parent)
+        self.annotation = annotation
+        self.image_view = image_view
 
 
 class ImageCanvas(QWidget):
