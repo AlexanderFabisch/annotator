@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
 
 
@@ -22,15 +22,16 @@ class CentralWidget(QWidget):
         self.annotation = AnnotationModel("image.jpg")  # TODO
 
         splitter = QSplitter(Qt.Horizontal)
-        self.tabs = QTabWidget(self)
-        self.config_editor = ConfigurationEditor(self, self.annotator_config)
-        self.tabs.addTab(self.config_editor, "Configuration")
-        self.ann_editor = AnnotationEditor(self, self.annotation)  # TODO
-        self.tabs.addTab(self.ann_editor, "Annotation")
-        splitter.addWidget(self.tabs)
 
         self.canvas = ImageCanvas(self, self.annotator_config, self.annotation)
         splitter.addWidget(self.canvas)
+
+        self.tabs = QTabWidget(self)
+        self.config_editor = ConfigurationEditor(self, self.annotator_config)
+        self.tabs.addTab(self.config_editor, "Configuration")
+        self.ann_editor = AnnotationEditor(self, self.annotation, self.canvas)
+        self.tabs.addTab(self.ann_editor, "Annotation")
+        splitter.addWidget(self.tabs)
 
         # TODO
         policy = QSizePolicy()
@@ -65,12 +66,49 @@ class ConfigurationEditor(QWidget):
 
 
 class AnnotationEditor(QWidget):
-    def __init__(self, parent, model):
+    def __init__(self, parent, model, image_view):
         super(AnnotationEditor, self).__init__(parent)
         self.model = model
+        self.image_view = image_view
+
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignTop)
         self.setLayout(self.layout)
+
+        self.selector = QWidget()
+        selector_layout = QHBoxLayout()
+        self.selector.setLayout(selector_layout)
+        self.button_prev = QPushButton("Previous")
+        self.button_prev.pressed.connect(self.select_prev)
+        selector_layout.addWidget(self.button_prev)
+        self.button_next = QPushButton("Next")
+        self.button_next.pressed.connect(self.select_next)
+        selector_layout.addWidget(self.button_next)
+        self.layout.addWidget(self.selector)
+
+    def select_prev(self):
+        if self.model.selected_annotation is None:
+            if len(self.model.bounding_boxes) > 0:
+                self.model.selected_annotation = len(self.model.bounding_boxes) - 1
+            else:
+                return
+        else:
+            self.model.selected_annotation -= 1
+            if self.model.selected_annotation < 0:
+                self.model.selected_annotation = 0
+        self.image_view.update_annotation()
+
+    def select_next(self):
+        if self.model.selected_annotation is None:
+            if len(self.model.bounding_boxes) > 0:
+                self.model.selected_annotation = 0
+            else:
+                return
+        else:
+            self.model.selected_annotation += 1
+            if self.model.selected_annotation >= len(self.model.bounding_boxes):
+                self.model.selected_annotation -= 1
+        self.image_view.update_annotation()
 
 
 class ImageCanvas(QWidget):
@@ -106,16 +144,22 @@ class ImageCanvas(QWidget):
         # TODO could be done directly, without overlay image
         painter = QPainter()
         painter.begin(overlay)
+        i = 0
         for topleft, bottomright, color in self.annotation.bounding_boxes:
-            self._draw_rect(painter, topleft, bottomright, color)
-        self._draw_rect(painter, self.started_drag, (x, y), self.config.active_color)
+            self._draw_rect(
+                painter, topleft, bottomright, color,
+                selected=self.annotation.selected_annotation == i)
+            i += 1
+        self._draw_rect(
+            painter, self.started_drag, (x, y), self.config.active_color,
+            selected=False)
         painter.end()
 
         self._apply_and_show_overlay(self.original_img, overlay)
-        #self.resize(self.img.width(), self.img.height())
 
-    def _draw_rect(self, painter, topleft, bottomright, color):
-        painter.setPen(QPen(QBrush(self.config.bb_colors[color]), 5))
+    def _draw_rect(self, painter, topleft, bottomright, color, selected=False):
+        width = 10 if selected else 5
+        painter.setPen(QPen(QBrush(self.config.bb_colors[color]), width))
         painter.drawRect(QRect(QPoint(*topleft), QPoint(*bottomright)))
 
     def _new_overlay(self, img):
@@ -143,6 +187,19 @@ class ImageCanvas(QWidget):
     def _apply_bounds(self, x, y):
         # TODO
         return x, y
+
+    def update_annotation(self):
+        overlay = self._new_overlay(self.original_img)
+        painter = QPainter()
+        painter.begin(overlay)
+        i = 0
+        for topleft, bottomright, color in self.annotation.bounding_boxes:
+            self._draw_rect(
+                painter, topleft, bottomright, color,
+                selected=self.annotation.selected_annotation == i)
+            i += 1
+        painter.end()
+        self._apply_and_show_overlay(self.original_img, overlay)
 
 
 # https://www.riverbankcomputing.com/static/Docs/PyQt4/qlabel.html
@@ -188,6 +245,8 @@ class AnnotationModel:
     def reset(self, filename):
         self.filename = filename
         self.bounding_boxes = []
+
+        self.selected_annotation = None
 
 
 if __name__ == '__main__':
