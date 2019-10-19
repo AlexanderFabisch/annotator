@@ -1,6 +1,6 @@
 import sys
-from PyQt5.QtCore import pyqtSignal, QRect, QPoint
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QLabel, QHBoxLayout
+from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QLabel, QHBoxLayout, QSplitter, QSizePolicy
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
 
 
@@ -26,10 +26,25 @@ class ImageView(QLabel):
 class CentralWidget(QWidget):
     def __init__(self, parent):
         super(CentralWidget, self).__init__(parent)
-        self.layout = QHBoxLayout(self)
-        self.canvas = ImageCanvas(self)
-        self.layout.addWidget(self.canvas)
+        self.layout = QHBoxLayout()
         self.setLayout(self.layout)
+
+        splitter = QSplitter(Qt.Horizontal)
+        self.tabs = QTabWidget(self)
+        splitter.addWidget(self.tabs)
+
+        self.canvas = ImageCanvas(self)
+        splitter.addWidget(self.canvas)
+
+        # TODO
+        policy = QSizePolicy()
+        policy.setHorizontalPolicy(QSizePolicy.Maximum)
+        policy.setVerticalPolicy(QSizePolicy.Preferred)
+        self.canvas.setSizePolicy(policy)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+
+        self.layout.addWidget(splitter)
 
 
 class MainWindow(QMainWindow):
@@ -38,6 +53,20 @@ class MainWindow(QMainWindow):
         self.central_widget = CentralWidget(self)
         self.setCentralWidget(self.central_widget)
         self.show()
+
+
+class AnnotatorConfigurationModel(QObject):
+    def __init__(self):
+        # configuration options    
+        self.bb_colors = [
+            QColor(255, 0, 0, 127),
+            QColor(0, 255, 0, 127),
+            QColor(0, 0, 255, 127),
+            # TODO define more colors
+        ]
+
+        # configuration
+        self.active_color = 0
 
 
 class ImageCanvas(QWidget):
@@ -54,16 +83,9 @@ class ImageCanvas(QWidget):
         self.img_view.drag.connect(self.drag)
         self.img_view.stop_drag.connect(self.stop_drag)
 
-        # configuration options    
-        self.bb_colors = [
-            QColor(255, 0, 0, 127),
-            QColor(0, 255, 0, 127),
-            QColor(0, 0, 255, 127),
-            # TODO define more colors
-        ]
+        self.config = AnnotatorConfigurationModel()
 
         # temporary variables
-        self.active_color = 0
         self.started_drag = None
 
         # results
@@ -88,13 +110,13 @@ class ImageCanvas(QWidget):
         painter.begin(overlay)
         for topleft, bottomright, color in self.bounding_boxes:
             self._draw_rect(painter, topleft, bottomright, color)
-        self._draw_rect(painter, self.started_drag, (x, y), self.active_color)
+        self._draw_rect(painter, self.started_drag, (x, y), self.config.active_color)
         painter.end()
 
         self._apply_and_show_overlay(self.original_img, overlay)
 
     def _draw_rect(self, painter, topleft, bottomright, color):
-        painter.setPen(QPen(QBrush(self.bb_colors[color]), 5))
+        painter.setPen(QPen(QBrush(self.config.bb_colors[color]), 5))
         painter.drawRect(QRect(QPoint(*topleft), QPoint(*bottomright)))
 
     def _new_overlay(self, img):
@@ -117,7 +139,7 @@ class ImageCanvas(QWidget):
 
     def stop_drag(self, x, y):
         self.bounding_boxes.append(
-            (self.started_drag, self._apply_bounds(x, y), self.active_color))
+            (self.started_drag, self._apply_bounds(x, y), self.config.active_color))
         self.started_drag = None
 
     def _apply_bounds(self, x, y):
