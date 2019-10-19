@@ -45,6 +45,7 @@ class ConfigurationEditor(QWidget):
         super(ConfigurationEditor, self).__init__(parent)
         self.model = model
         self.layout = QVBoxLayout()
+        self.layout.setAlignment(Qt.AlignTop)
         self.setLayout(self.layout)
 
         self.color_selector_description = QLabel(self)
