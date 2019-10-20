@@ -10,7 +10,7 @@ import cv2
 
 
 # TODO
-# * button to change label of annotation
+# * make filenames work for multiple videos
 # * shortcuts for video control
 # * load and show existing annotations
 # * selector for annotation colors
@@ -33,7 +33,7 @@ class CentralWidget(QWidget):
         self.setLayout(self.layout)
 
         self.annotator_config = AnnotatorConfigurationModel()
-        self.annotation = AnnotationModel(filename, output_path)
+        self.annotation = AnnotationModel(filename, output_path, self.annotator_config)
 
         splitter = QSplitter(Qt.Horizontal)
 
@@ -102,6 +102,10 @@ class AnnotationEditor(QWidget):
         selector_layout.addWidget(self.button_next)
         self.layout.addWidget(self.selector)
 
+        self.button_change_color = QPushButton("Change Color")
+        self.button_change_color.pressed.connect(self.change_color)
+        self.layout.addWidget(self.button_change_color)
+
         self.delete = QPushButton("Delete Selection")
         self.delete.pressed.connect(self.delete_selection)
         self.layout.addWidget(self.delete)
@@ -116,6 +120,10 @@ class AnnotationEditor(QWidget):
 
     def select_next(self):
         self.model.select_next()
+        self.image_view.update_annotation()
+
+    def change_color(self):
+        self.model.change_color_of_selected_annotation()
         self.image_view.update_annotation()
 
     def delete_selection(self):
@@ -282,7 +290,7 @@ class ImageCanvas(QWidget):
 
     def stop_drag(self, x, y):
         self.annotation.bounding_boxes.append(
-            (self.started_drag, self._apply_bounds(x, y), self.config.active_color))
+            [self.started_drag, self._apply_bounds(x, y), self.config.active_color])
         self.started_drag = None
 
     def _apply_bounds(self, x, y):
@@ -348,9 +356,11 @@ class AnnotatorConfigurationModel:
 
 
 class AnnotationModel:  # TODO extract VideoModel?
-    def __init__(self, filename, output_path, image_size=(1280, 720)):
+    def __init__(self, filename, output_path, annotator_config,
+                 image_size=(1280, 720)):
         self.filename = filename
         self.output_path = output_path
+        self.annotator_config = annotator_config
         self.image_size = image_size
         self.cap = cv2.VideoCapture(self.filename)
         self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -410,6 +420,13 @@ class AnnotationModel:  # TODO extract VideoModel?
             if self.selected_annotation >= len(self.bounding_boxes):
                 self.selected_annotation -= 1
     
+    def change_color_of_selected_annotation(self):
+        if self.selected_annotation is None:
+            return
+        self.bounding_boxes[self.selected_annotation][2] = (
+            (self.bounding_boxes[self.selected_annotation][2] + 1)
+             % self.annotator_config.n_classes)
+
     def delete_selection(self):
         if self.selected_annotation is None:
             return
