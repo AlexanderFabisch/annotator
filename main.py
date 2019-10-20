@@ -2,6 +2,7 @@ import sys
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
+from functools import partial
 import numpy as np
 import cv2
 
@@ -131,18 +132,36 @@ class VideoControl(QWidget):
         self.button_next_image.pressed.connect(self.next_image)
         self.layout.addWidget(self.button_next_image)
 
+        # TODO put corresponding buttons next to each other
+
         # TODO magic numbers
         self.button_skip100 = QPushButton("Skip 100 Frames")
-        self.button_skip100.pressed.connect(self.skip100)
+        self.button_skip100.pressed.connect(partial(self.skip, 100))
         self.layout.addWidget(self.button_skip100)
 
         self.button_skip500 = QPushButton("Skip 500 Frames")
-        self.button_skip500.pressed.connect(self.skip500)
+        self.button_skip500.pressed.connect(partial(self.skip, 500))
         self.layout.addWidget(self.button_skip500)
 
         self.button_skip1800 = QPushButton("Skip 1800 Frames")
-        self.button_skip1800.pressed.connect(self.skip1800)
+        self.button_skip1800.pressed.connect(partial(self.skip, 1800))
         self.layout.addWidget(self.button_skip1800)
+
+        self.button_prev_image = QPushButton("Previous Frames")
+        self.button_prev_image.pressed.connect(partial(self.skip, -1))
+        self.layout.addWidget(self.button_prev_image)
+
+        self.button_back100 = QPushButton("Go back 100 Frames")
+        self.button_back100.pressed.connect(partial(self.skip, -100))
+        self.layout.addWidget(self.button_back100)
+
+        self.button_back500 = QPushButton("Go back 500 Frames")
+        self.button_back500.pressed.connect(partial(self.skip, -500))
+        self.layout.addWidget(self.button_back500)
+
+        self.button_back1800 = QPushButton("Go back 1800 Frames")
+        self.button_back1800.pressed.connect(partial(self.skip, -1800))
+        self.layout.addWidget(self.button_back1800)
 
         self.update_info()
 
@@ -150,15 +169,6 @@ class VideoControl(QWidget):
         self.annotation.next_image()
         self.image_view.update_image()
         self.update_info()
-
-    def skip100(self):
-        self.skip(100)
-
-    def skip500(self):
-        self.skip(500)
-
-    def skip1800(self):
-        self.skip(1800)
 
     def skip(self, frames):
         self.annotation.skip(frames)
@@ -324,6 +334,8 @@ class AnnotationModel:  # TODO extract VideoModel?
         self.image_idx += skip_frames
         if self.image_idx >= self.n_frames:
             self.image_idx = self.n_frames - 1
+        elif self.image_idx < 0:
+            self.image_idx = 0
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.image_idx)
         self._read_image()
 
