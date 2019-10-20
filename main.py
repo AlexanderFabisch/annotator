@@ -10,8 +10,11 @@ import cv2
 
 
 # TODO
+# * button to change label of annotation
 # * shortcuts for video control
-# * save annotation in CSV (it's the simplest format)
+# * load and show existing annotations
+# * selector for annotation colors
+# * display annotation hints, load from config
 
 
 class MainWindow(QMainWindow):
@@ -283,8 +286,7 @@ class ImageCanvas(QWidget):
         self.started_drag = None
 
     def _apply_bounds(self, x, y):
-        # TODO
-        return x, y
+        return min(max(x, 0), self.img.width()), min(max(y, 0), self.img.height())
 
     def update_image(self):
         data = self.annotation.image
@@ -432,6 +434,7 @@ class AnnotationModel:  # TODO extract VideoModel?
                 annotations_reader = csv.reader(f, delimiter=",")
                 rows = [r for r in annotations_reader]
 
+            # TODO does not work
             rows_to_delete = []
             for row_idx in range(len(rows)):
                 if rows[row_idx][0] == filename and rows[row_idx][1] == self.image_idx:
@@ -442,9 +445,13 @@ class AnnotationModel:  # TODO extract VideoModel?
             rows = []
 
         for bb in self.bounding_boxes:
+            x_min = min(bb[0][0], bb[1][0])
+            x_max = max(bb[0][0], bb[1][0])
+            y_min = min(bb[0][1], bb[1][1])
+            y_max = max(bb[0][1], bb[1][1])
             rows.append(
                 (filename, self.image_idx,
-                bb[0][0], bb[0][1], bb[1][0], bb[1][1], bb[2]))
+                x_min, y_min, x_max, y_max, bb[2]))
 
         with open(annotations_filename, "w") as f:
             annotations_writer = csv.writer(f, delimiter=",")
