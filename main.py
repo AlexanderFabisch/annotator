@@ -1,5 +1,6 @@
 import os
 import sys
+import uuid
 from functools import partial
 import csv
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject, QTimer
@@ -10,11 +11,11 @@ import cv2
 
 
 # TODO
-# * make filenames work for multiple videos
 # * shortcuts for video control
 # * load and show existing annotations
 # * selector for annotation colors
 # * display annotation hints, load from config
+# * fix annotation overwrite
 
 
 class MainWindow(QMainWindow):
@@ -442,7 +443,9 @@ class AnnotationModel:  # TODO extract VideoModel?
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
 
-        filename = os.path.join(self.output_path, "annotated%08d.jpg" % self.image_idx)  # TODO name
+        filename = os.path.join(
+            self.output_path,
+            "annotated_%s_%08d.jpg" % (uuid.uuid1(), self.image_idx))
         cv2.imwrite(filename, self.image)
 
         annotations_filename = os.path.join(self.output_path, "annotations.csv")
