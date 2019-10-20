@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton, QGridLayout
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
 from functools import partial
 import numpy as np
@@ -120,48 +120,46 @@ class VideoControl(QWidget):
         self.annotation = annotation
         self.image_view = image_view
 
-        self.layout = QVBoxLayout()
+        self.layout = QGridLayout()
         self.layout.setAlignment(Qt.AlignTop)
         self.setLayout(self.layout)
 
         self.n_frames_label = QLabel()
         self.n_frames_label.setAlignment(Qt.AlignRight)
-        self.layout.addWidget(self.n_frames_label)
+        self.layout.addWidget(self.n_frames_label, 0, 0)
 
         self.button_next_image = QPushButton("Next Frame")
         self.button_next_image.pressed.connect(self.next_image)
-        self.layout.addWidget(self.button_next_image)
-
-        # TODO put corresponding buttons next to each other
+        self.layout.addWidget(self.button_next_image, 1, 1)
 
         # TODO magic numbers
         self.button_skip100 = QPushButton("Skip 100 Frames")
         self.button_skip100.pressed.connect(partial(self.skip, 100))
-        self.layout.addWidget(self.button_skip100)
+        self.layout.addWidget(self.button_skip100, 2, 1)
 
         self.button_skip500 = QPushButton("Skip 500 Frames")
         self.button_skip500.pressed.connect(partial(self.skip, 500))
-        self.layout.addWidget(self.button_skip500)
+        self.layout.addWidget(self.button_skip500, 3, 1)
 
         self.button_skip1800 = QPushButton("Skip 1800 Frames")
         self.button_skip1800.pressed.connect(partial(self.skip, 1800))
-        self.layout.addWidget(self.button_skip1800)
+        self.layout.addWidget(self.button_skip1800, 4, 1)
 
         self.button_prev_image = QPushButton("Previous Frames")
         self.button_prev_image.pressed.connect(partial(self.skip, -1))
-        self.layout.addWidget(self.button_prev_image)
+        self.layout.addWidget(self.button_prev_image, 1, 0)
 
         self.button_back100 = QPushButton("Go back 100 Frames")
         self.button_back100.pressed.connect(partial(self.skip, -100))
-        self.layout.addWidget(self.button_back100)
+        self.layout.addWidget(self.button_back100, 2, 0)
 
         self.button_back500 = QPushButton("Go back 500 Frames")
         self.button_back500.pressed.connect(partial(self.skip, -500))
-        self.layout.addWidget(self.button_back500)
+        self.layout.addWidget(self.button_back500, 3, 0)
 
         self.button_back1800 = QPushButton("Go back 1800 Frames")
         self.button_back1800.pressed.connect(partial(self.skip, -1800))
-        self.layout.addWidget(self.button_back1800)
+        self.layout.addWidget(self.button_back1800, 4, 0)
 
         self.update_info()
 
