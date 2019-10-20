@@ -445,7 +445,7 @@ class AnnotationModel:  # TODO extract VideoModel?
 
         filename = os.path.join(
             self.output_path,
-            "annotated_%s_%08d.jpg" % (uuid.uuid1(), self.image_idx))
+            "annotated_%s_%08d.jpg" % (uuid.uuid4(), self.image_idx))
         cv2.imwrite(filename, self.image)
 
         annotations_filename = os.path.join(self.output_path, "annotations.csv")
