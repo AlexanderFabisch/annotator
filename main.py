@@ -123,21 +123,52 @@ class VideoControl(QWidget):
         self.layout.setAlignment(Qt.AlignTop)
         self.setLayout(self.layout)
 
-        self.button_next_image = QPushButton("Next Image")
+        self.n_frames_label = QLabel()
+        self.n_frames_label.setAlignment(Qt.AlignRight)
+        self.layout.addWidget(self.n_frames_label)
+
+        self.button_next_image = QPushButton("Next Frame")
         self.button_next_image.pressed.connect(self.next_image)
         self.layout.addWidget(self.button_next_image)
 
-        self.button_skip = QPushButton("Skip 100 Frames")  # TODO magic number
-        self.button_skip.pressed.connect(self.skip)
-        self.layout.addWidget(self.button_skip)
+        # TODO magic numbers
+        self.button_skip100 = QPushButton("Skip 100 Frames")
+        self.button_skip100.pressed.connect(self.skip100)
+        self.layout.addWidget(self.button_skip100)
+
+        self.button_skip500 = QPushButton("Skip 500 Frames")
+        self.button_skip500.pressed.connect(self.skip500)
+        self.layout.addWidget(self.button_skip500)
+
+        self.button_skip1800 = QPushButton("Skip 1800 Frames")
+        self.button_skip1800.pressed.connect(self.skip1800)
+        self.layout.addWidget(self.button_skip1800)
+
+        self.update_info()
 
     def next_image(self):
         self.annotation.next_image()
         self.image_view.update_image()
+        self.update_info()
 
-    def skip(self):
-        self.annotation.skip()
+    def skip100(self):
+        self.skip(100)
+
+    def skip500(self):
+        self.skip(500)
+
+    def skip1800(self):
+        self.skip(1800)
+
+    def skip(self, frames):
+        self.annotation.skip(frames)
         self.image_view.update_image()
+        self.update_info()
+
+    def update_info(self):
+        self.n_frames_label.setText(
+            "%d / %d Frames" % (self.annotation.image_idx + 1,
+                                self.annotation.n_frames))
 
 
 class ImageCanvas(QWidget):
@@ -271,22 +302,28 @@ class AnnotatorConfigurationModel:
         self.active_color = 0
 
 
-class AnnotationModel:
+class AnnotationModel:  # TODO extract VideoModel?
     def __init__(self, filename, image_size=(1280, 720)):
         self.filename = filename
         self.image_size = image_size
         self.cap = cv2.VideoCapture(self.filename)
-        self.image_idx = 0
+        self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        self.image_idx = -1
         self.next_image()
 
     def next_image(self):
-        self.reset_annotation()
         self.image_idx += 1
+        if self.image_idx >= self.n_frames:
+            self.image_idx -= 1
+            return
+        self.reset_annotation()
         self._read_image()
 
-    def skip(self):
+    def skip(self, skip_frames):
         self.reset_annotation()
-        self.image_idx += 100  # TODO magic number
+        self.image_idx += skip_frames
+        if self.image_idx >= self.n_frames:
+            self.image_idx = self.n_frames - 1
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.image_idx)
         self._read_image()
 
