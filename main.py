@@ -1,8 +1,10 @@
+import os
 import sys
+from functools import partial
+import csv
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton, QGridLayout, QProgressBar
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
-from functools import partial
 import numpy as np
 import cv2
 
@@ -13,22 +15,22 @@ import cv2
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, filename):
+    def __init__(self, filename, output_path):
         super(MainWindow, self).__init__()
-        self.central_widget = CentralWidget(self, filename)
+        self.central_widget = CentralWidget(self, filename, output_path)
         self.setCentralWidget(self.central_widget)
         self.resize(1800, 800)  # TODO
         self.show()
 
 
 class CentralWidget(QWidget):
-    def __init__(self, parent, filename):
+    def __init__(self, parent, filename, output_path):
         super(CentralWidget, self).__init__(parent)
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
 
         self.annotator_config = AnnotatorConfigurationModel()
-        self.annotation = AnnotationModel(filename)
+        self.annotation = AnnotationModel(filename, output_path)
 
         splitter = QSplitter(Qt.Horizontal)
 
@@ -101,6 +103,10 @@ class AnnotationEditor(QWidget):
         self.delete.pressed.connect(self.delete_selection)
         self.layout.addWidget(self.delete)
 
+        self.save = QPushButton("Save Annotations")
+        self.save.pressed.connect(self.save_annotations)
+        self.layout.addWidget(self.save)
+
     def select_prev(self):
         self.model.select_prev()
         self.image_view.update_annotation()
@@ -112,6 +118,9 @@ class AnnotationEditor(QWidget):
     def delete_selection(self):
         self.model.delete_selection()
         self.image_view.update_annotation()
+
+    def save_annotations(self):
+        self.model.save()
 
 
 class VideoControl(QWidget):
@@ -337,8 +346,9 @@ class AnnotatorConfigurationModel:
 
 
 class AnnotationModel:  # TODO extract VideoModel?
-    def __init__(self, filename, image_size=(1280, 720)):
+    def __init__(self, filename, output_path, image_size=(1280, 720)):
         self.filename = filename
+        self.output_path = output_path
         self.image_size = image_size
         self.cap = cv2.VideoCapture(self.filename)
         self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -407,8 +417,43 @@ class AnnotationModel:  # TODO extract VideoModel?
         if len(self.bounding_boxes) == 0:
             self.selected_annotation = None
 
+    # TODO load data in memory
+
+    def save(self):  # TODO refactor
+        if not os.path.exists(self.output_path):
+            os.makedirs(self.output_path)
+
+        filename = os.path.join(self.output_path, "annotated%08d.jpg" % self.image_idx)  # TODO name
+        cv2.imwrite(filename, self.image)
+
+        annotations_filename = os.path.join(self.output_path, "annotations.csv")
+        if os.path.exists(annotations_filename):
+            with open(annotations_filename, "r") as f:
+                annotations_reader = csv.reader(f, delimiter=",")
+                rows = [r for r in annotations_reader]
+
+            rows_to_delete = []
+            for row_idx in range(len(rows)):
+                if rows[row_idx][0] == filename and rows[row_idx][1] == self.image_idx:
+                    rows_to_delete.append(rows[row_idx])
+            for row in rows_to_delete:  # TODO more efficient?
+                rows.remove(row)
+        else:
+            rows = []
+
+        for bb in self.bounding_boxes:
+            rows.append(
+                (filename, self.image_idx,
+                bb[0][0], bb[0][1], bb[1][0], bb[1][1], bb[2]))
+
+        with open(annotations_filename, "w") as f:
+            annotations_writer = csv.writer(f, delimiter=",")
+            for row in rows:
+                annotations_writer.writerow(row)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    win = MainWindow(sys.argv[1])
+    # TODO argparser
+    win = MainWindow(sys.argv[1], sys.argv[2])
     sys.exit(app.exec_())
