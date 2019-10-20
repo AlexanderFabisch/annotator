@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject
+from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton, QGridLayout, QProgressBar
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
 from functools import partial
@@ -133,38 +133,58 @@ class VideoControl(QWidget):
         self.progress_bar.setRange(1, self.annotation.n_frames)
         self.layout.addWidget(self.progress_bar, 0, 1)
 
+        self.msecs_per_frame_label = QLabel()
+        self.msecs_per_frame_label.setText("%d FPS" % (1.0 / self.annotation.secs_per_frame))
+        self.layout.addWidget(self.msecs_per_frame_label, 1, 0)
+
+        self.duration_label = QLabel()
+        self.duration_label.setText("%.3f s" % self.annotation.duration())
+        self.layout.addWidget(self.duration_label, 1, 1)
+
         self.button_next_image = QPushButton("Next Frame")
         self.button_next_image.pressed.connect(self.next_image)
-        self.layout.addWidget(self.button_next_image, 1, 1)
+        self.layout.addWidget(self.button_next_image, 2, 1)
 
         # TODO magic numbers
         self.button_skip100 = QPushButton("Skip 100 Frames")
         self.button_skip100.pressed.connect(partial(self.skip, 100))
-        self.layout.addWidget(self.button_skip100, 2, 1)
+        self.layout.addWidget(self.button_skip100, 3, 1)
 
         self.button_skip500 = QPushButton("Skip 500 Frames")
         self.button_skip500.pressed.connect(partial(self.skip, 500))
-        self.layout.addWidget(self.button_skip500, 3, 1)
+        self.layout.addWidget(self.button_skip500, 4, 1)
 
         self.button_skip1800 = QPushButton("Skip 1800 Frames")
         self.button_skip1800.pressed.connect(partial(self.skip, 1800))
-        self.layout.addWidget(self.button_skip1800, 4, 1)
+        self.layout.addWidget(self.button_skip1800, 5, 1)
 
         self.button_prev_image = QPushButton("Previous Frames")
         self.button_prev_image.pressed.connect(partial(self.skip, -1))
-        self.layout.addWidget(self.button_prev_image, 1, 0)
+        self.layout.addWidget(self.button_prev_image, 2, 0)
 
         self.button_back100 = QPushButton("Go back 100 Frames")
         self.button_back100.pressed.connect(partial(self.skip, -100))
-        self.layout.addWidget(self.button_back100, 2, 0)
+        self.layout.addWidget(self.button_back100, 3, 0)
 
         self.button_back500 = QPushButton("Go back 500 Frames")
         self.button_back500.pressed.connect(partial(self.skip, -500))
-        self.layout.addWidget(self.button_back500, 3, 0)
+        self.layout.addWidget(self.button_back500, 4, 0)
 
         self.button_back1800 = QPushButton("Go back 1800 Frames")
         self.button_back1800.pressed.connect(partial(self.skip, -1800))
-        self.layout.addWidget(self.button_back1800, 4, 0)
+        self.layout.addWidget(self.button_back1800, 5, 0)
+
+        self.button_play = QPushButton("Play")
+        self.layout.addWidget(self.button_play, 6, 0)
+
+        self.button_stop = QPushButton("Stop")
+        self.layout.addWidget(self.button_stop, 6, 1)
+
+        self.play_timer = QTimer(self)
+        self.button_play.pressed.connect(
+            partial(self.play_timer.start, int(self.annotation.secs_per_frame / 1000.0)))
+        self.play_timer.timeout.connect(self.next_image)
+        self.button_stop.pressed.connect(self.play_timer.stop)
 
         self.update_info()
 
@@ -322,8 +342,12 @@ class AnnotationModel:  # TODO extract VideoModel?
         self.image_size = image_size
         self.cap = cv2.VideoCapture(self.filename)
         self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        self.secs_per_frame = 1.0 / self.cap.get(cv2.CAP_PROP_FPS)
         self.image_idx = -1
         self.next_image()
+
+    def duration(self):
+        return self.n_frames * self.secs_per_frame
 
     def next_image(self):
         self.image_idx += 1
