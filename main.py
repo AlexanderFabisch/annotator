@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton, QGridLayout
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton, QGridLayout, QProgressBar
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
 from functools import partial
 import numpy as np
@@ -115,6 +115,8 @@ class AnnotationEditor(QWidget):
 
 
 class VideoControl(QWidget):
+    frame_changed = pyqtSignal(int)
+
     def __init__(self, parent, annotation, image_view):
         super(VideoControl, self).__init__(parent)
         self.annotation = annotation
@@ -127,6 +129,10 @@ class VideoControl(QWidget):
         self.n_frames_label = QLabel()
         self.n_frames_label.setAlignment(Qt.AlignRight)
         self.layout.addWidget(self.n_frames_label, 0, 0)
+
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(1, self.annotation.n_frames)
+        self.layout.addWidget(self.progress_bar, 0, 1)
 
         self.button_next_image = QPushButton("Next Frame")
         self.button_next_image.pressed.connect(self.next_image)
@@ -161,6 +167,8 @@ class VideoControl(QWidget):
         self.button_back1800.pressed.connect(partial(self.skip, -1800))
         self.layout.addWidget(self.button_back1800, 4, 0)
 
+        self.frame_changed.connect(self.progress_bar.valueChanged)
+
         self.update_info()
 
     def next_image(self):
@@ -177,6 +185,8 @@ class VideoControl(QWidget):
         self.n_frames_label.setText(
             "%d / %d Frames" % (self.annotation.image_idx + 1,
                                 self.annotation.n_frames))
+        # TODO somehow does not update!?
+        self.frame_changed.emit(self.annotation.image_idx + 1)
 
 
 class ImageCanvas(QWidget):
