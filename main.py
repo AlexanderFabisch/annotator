@@ -4,18 +4,30 @@ import hashlib
 from functools import partial
 import csv
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject, QTimer
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox, QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy, QPushButton, QGridLayout, QProgressBar
-from PyQt5.QtGui import QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox,
+    QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy,
+    QPushButton, QGridLayout, QProgressBar, QShortcut)
+from PyQt5.QtGui import (
+    QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen,
+    QKeySequence)
 import numpy as np
 import cv2
 
 
 # TODO
-# * shortcuts for video control
+# * organize widgets without tabs
 # * selector for annotation colors
+# * more shortcuts
 # * display annotation hints, load from config
 # * fix annotation overwrite
 # * clean up saving mess
+# * document shortcuts:
+#   * space: toggle play
+#   * arrow up/down: select annotation
+#   * enter: change color
+#   * delete: delete annotation
+#   * ctrl+s: save
 
 
 class MainWindow(QMainWindow):
@@ -78,8 +90,18 @@ class ConfigurationEditor(QWidget):
         self.color_selector.valueChanged.connect(self.change_active_color)
         self.layout.addWidget(self.color_selector)
 
+        self.shortcut_change_active_color = QShortcut(Qt.Key_Tab, self)
+        self.shortcut_change_active_color.activated.connect(self.toggle_active_color)
+
     def change_active_color(self, color):
         self.model.active_color = color
+
+    def toggle_active_color(self):
+        self.model.toggle_colors()
+        self.update_color_info()
+
+    def update_color_info(self):
+        self.color_selector.setValue(self.model.active_color)
 
 
 class AnnotationEditor(QWidget):
@@ -114,6 +136,24 @@ class AnnotationEditor(QWidget):
         self.save = QPushButton("Save Annotations")
         self.save.pressed.connect(self.save_annotations)
         self.layout.addWidget(self.save)
+
+        self.shortcut_select_prev = QShortcut(Qt.Key_Up, self)
+        self.shortcut_select_prev.activated.connect(self.select_prev)
+
+        self.shortcut_select_next = QShortcut(Qt.Key_Down, self)
+        self.shortcut_select_next.activated.connect(self.select_next)
+
+        self.shortcut_change_color = QShortcut(Qt.Key_Enter, self)
+        self.shortcut_change_color.activated.connect(self.change_color)
+
+        self.shortcut_change_color2 = QShortcut(Qt.Key_Return, self)
+        self.shortcut_change_color2.activated.connect(self.change_color)
+
+        self.shortcut_delete = QShortcut(Qt.Key_Delete, self)
+        self.shortcut_delete.activated.connect(self.delete_selection)
+
+        self.shortcut_save = QShortcut(QKeySequence("Ctrl+s"), self)
+        self.shortcut_save.activated.connect(self.save_annotations)
 
     def select_prev(self):
         self.model.select_prev()
@@ -207,6 +247,11 @@ class VideoControl(QWidget):
         self.play_timer.timeout.connect(self.next_image)
         self.button_stop.pressed.connect(self.play_timer.stop)
 
+        self.playing = False  # TODO set if button pressed
+
+        self.shortcut_play_stop = QShortcut(Qt.Key_Space, self)
+        self.shortcut_play_stop.activated.connect(self.toggle_play_stop)
+
         self.update_info()
 
     def next_image(self):
@@ -220,6 +265,13 @@ class VideoControl(QWidget):
         self.image_view.update_image()
         self.image_view.update_annotation()
         self.update_info()
+
+    def toggle_play_stop(self):
+        if self.playing:
+            self.play_timer.stop()
+        else:
+            self.play_timer.start()
+        self.playing = not self.playing
 
     def update_info(self):
         self.n_frames_label.setText(
@@ -358,6 +410,9 @@ class AnnotatorConfigurationModel:
         # configuration
         self.active_color = 0
 
+    def toggle_colors(self):
+        self.active_color = (self.active_color + 1) % self.n_classes
+
 
 class AnnotationModel:  # TODO extract VideoModel?
     def __init__(self, filename, output_path, annotator_config,
@@ -492,7 +547,7 @@ class AnnotationModel:  # TODO extract VideoModel?
             self.rows = []
 
     def _convert_row(self, row):
-        return [row[0]] + list(map(int, row[1:]))
+        return [row[0]] + list(map(int, map(float, row[1:])))
 
     def _remove_entries_from_this_image(self):
         rows_to_delete = []
