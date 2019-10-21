@@ -1,6 +1,6 @@
 import os
 import sys
-import uuid
+import hashlib
 from functools import partial
 import csv
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject, QTimer
@@ -12,10 +12,10 @@ import cv2
 
 # TODO
 # * shortcuts for video control
-# * load and show existing annotations
 # * selector for annotation colors
 # * display annotation hints, load from config
 # * fix annotation overwrite
+# * clean up saving mess
 
 
 class MainWindow(QMainWindow):
@@ -212,11 +212,13 @@ class VideoControl(QWidget):
     def next_image(self):
         self.annotation.next_image()
         self.image_view.update_image()
+        self.image_view.update_annotation()
         self.update_info()
 
     def skip(self, frames):
         self.annotation.skip(frames)
         self.image_view.update_image()
+        self.image_view.update_annotation()
         self.update_info()
 
     def update_info(self):
@@ -240,6 +242,7 @@ class ImageCanvas(QWidget):
         self.img_view.stop_drag.connect(self.stop_drag)
 
         self.update_image()
+        self.update_annotation()
 
         # temporary variables
         self.started_drag = None
@@ -367,28 +370,37 @@ class AnnotationModel:  # TODO extract VideoModel?
         self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         self.secs_per_frame = 1.0 / self.cap.get(cv2.CAP_PROP_FPS)
         self.image_idx = -1
+        self.image_filename = None
+        if not os.path.exists(self.output_path):
+            os.makedirs(self.output_path)
+        self.annotations_filename = os.path.join(
+            self.output_path, "annotations.csv")
+        self.load()
+        self.bounding_boxes = []
         self.next_image()
 
     def duration(self):
         return self.n_frames * self.secs_per_frame
 
     def next_image(self):
-        self.image_idx += 1
+        self.reset_annotation()
+        self._update_image_index(self.image_idx + 1)
         if self.image_idx >= self.n_frames:
             self.image_idx -= 1
             return
-        self.reset_annotation()
         self._read_image()
+        self._load_annotation_of_current_image()
 
     def skip(self, skip_frames):
         self.reset_annotation()
-        self.image_idx += skip_frames
+        self._update_image_index(self.image_idx + skip_frames)
         if self.image_idx >= self.n_frames:
             self.image_idx = self.n_frames - 1
         elif self.image_idx < 0:
             self.image_idx = 0
         self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.image_idx)
         self._read_image()
+        self._load_annotation_of_current_image()
 
     def _read_image(self):
         assert self.cap.isOpened()
@@ -396,8 +408,42 @@ class AnnotationModel:  # TODO extract VideoModel?
         self.image = cv2.resize(image, self.image_size)
 
     def reset_annotation(self):
+        self._save_annotations_as_rows()
         self.bounding_boxes = []
         self.selected_annotation = None
+
+    def _save_annotations_as_rows(self):
+        self._remove_entries_from_this_image()
+        for bb in self.bounding_boxes:
+            x_min = min(bb[0][0], bb[1][0])
+            x_max = max(bb[0][0], bb[1][0])
+            y_min = min(bb[0][1], bb[1][1])
+            y_max = max(bb[0][1], bb[1][1])
+            row = (self.image_filename, self.image_idx,
+                   x_min, y_min, x_max, y_max, bb[2])
+            self.rows.append(row)
+        # TODO control when image is written... together with annotations.csv
+        if (len(self.bounding_boxes) > 0 and
+                self.image_filename is not None and
+                not os.path.exists(self.image_filename)):
+            cv2.imwrite(self.image_filename, self.image)
+
+    def _update_image_index(self, idx):
+        self.image_idx = idx
+
+        m = hashlib.md5()
+        m.update(self.filename.encode())
+        #m.update(bytes(self.image_idx))  # TODO note sure why this might be useful
+        identifier = m.hexdigest()
+        self.image_filename = os.path.join(
+            self.output_path,
+            "annotated_%s_%08d.jpg" % (identifier, self.image_idx))
+
+    def _load_annotation_of_current_image(self):
+        for row in self.rows:
+            if row[0] == self.image_filename and row[1] == self.image_idx:
+                x_min, y_min, x_max, y_max, color = row[2:]
+                self.bounding_boxes.append([[x_min, y_min], [x_max, y_max], color])
 
     def select_prev(self):
         if self.selected_annotation is None:
@@ -437,45 +483,34 @@ class AnnotationModel:  # TODO extract VideoModel?
         if len(self.bounding_boxes) == 0:
             self.selected_annotation = None
 
-    # TODO load data in memory
-
-    def save(self):  # TODO refactor
-        if not os.path.exists(self.output_path):
-            os.makedirs(self.output_path)
-
-        filename = os.path.join(
-            self.output_path,
-            "annotated_%s_%08d.jpg" % (uuid.uuid4(), self.image_idx))
-        cv2.imwrite(filename, self.image)
-
-        annotations_filename = os.path.join(self.output_path, "annotations.csv")
-        if os.path.exists(annotations_filename):
-            with open(annotations_filename, "r") as f:
+    def load(self):
+        if os.path.exists(self.annotations_filename):
+            with open(self.annotations_filename, "r") as f:
                 annotations_reader = csv.reader(f, delimiter=",")
-                rows = [r for r in annotations_reader]
-
-            # TODO does not work
-            rows_to_delete = []
-            for row_idx in range(len(rows)):
-                if rows[row_idx][0] == filename and rows[row_idx][1] == self.image_idx:
-                    rows_to_delete.append(rows[row_idx])
-            for row in rows_to_delete:  # TODO more efficient?
-                rows.remove(row)
+                self.rows = [self._convert_row(r) for r in annotations_reader]
         else:
-            rows = []
+            self.rows = []
 
-        for bb in self.bounding_boxes:
-            x_min = min(bb[0][0], bb[1][0])
-            x_max = max(bb[0][0], bb[1][0])
-            y_min = min(bb[0][1], bb[1][1])
-            y_max = max(bb[0][1], bb[1][1])
-            rows.append(
-                (filename, self.image_idx,
-                x_min, y_min, x_max, y_max, bb[2]))
+    def _convert_row(self, row):
+        return [row[0]] + list(map(int, row[1:]))
 
-        with open(annotations_filename, "w") as f:
+    def _remove_entries_from_this_image(self):
+        rows_to_delete = []
+        for row_idx in range(len(self.rows)):
+            if self.rows[row_idx][0] == self.image_filename and self.rows[row_idx][1] == self.image_idx:
+                rows_to_delete.append(self.rows[row_idx])
+        for row in rows_to_delete:  # TODO more efficient?
+            self.rows.remove(row)
+
+    def save(self):
+        if len(self.bounding_boxes) > 0 and not os.path.exists(self.image_filename):
+            cv2.imwrite(self.image_filename, self.image)
+
+        self._save_annotations_as_rows()
+
+        with open(self.annotations_filename, "w") as f:
             annotations_writer = csv.writer(f, delimiter=",")
-            for row in rows:
+            for row in self.rows:
                 annotations_writer.writerow(row)
 
 
