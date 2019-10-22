@@ -425,9 +425,19 @@ class AnnotatorConfigurationModel:
 
         # configuration options
         self.bb_colors = [
-            QColor(255, 0, 0, 127),
-            QColor(0, 255, 0, 127),
-            QColor(0, 0, 255, 127),
+            QColor(30, 45, 69),
+            QColor(87, 52, 32),
+            QColor(33, 66, 41),
+            QColor(77, 31, 32),
+            QColor(51, 45, 70),
+            QColor(58, 47, 38),
+            QColor(85, 55, 76),
+            QColor(55, 55, 55),
+            QColor(80, 73, 45),
+            QColor(39, 71, 80),
+            #QColor(255, 0, 0, 127),
+            #QColor(0, 255, 0, 127),
+            #QColor(0, 0, 255, 127),
             # TODO define more colors
         ]
 
@@ -512,7 +522,6 @@ class AnnotationModel:  # TODO extract VideoModel?
 
         m = hashlib.md5()
         m.update(self.filename.encode())
-        #m.update(bytes(self.image_idx))  # TODO note sure why this might be useful
         identifier = m.hexdigest()
         self.image_filename = os.path.join(
             self.output_path,
