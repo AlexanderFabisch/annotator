@@ -16,7 +16,6 @@ import cv2
 
 
 # TODO
-# * toggle through annotations with arrow keys
 # * display annotation hints, load from config
 # * fix annotation overwrite
 # * clean up saving mess
@@ -534,7 +533,7 @@ class AnnotationModel:  # TODO extract VideoModel?
         else:
             self.selected_annotation -= 1
             if self.selected_annotation < 0:
-                self.selected_annotation = 0
+                self.selected_annotation = len(self.bounding_boxes) - 1
     
     def select_next(self):
         if self.selected_annotation is None:
@@ -545,7 +544,7 @@ class AnnotationModel:  # TODO extract VideoModel?
         else:
             self.selected_annotation += 1
             if self.selected_annotation >= len(self.bounding_boxes):
-                self.selected_annotation -= 1
+                self.selected_annotation = 0
     
     def change_color_of_selected_annotation(self):
         if self.selected_annotation is None:
