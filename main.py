@@ -16,7 +16,6 @@ import cv2
 
 
 # TODO
-# * more shortcuts
 # * toggle through annotations with arrow keys
 # * display annotation hints, load from config
 # * fix annotation overwrite
@@ -27,6 +26,9 @@ import cv2
 #   * enter: change color
 #   * delete: delete annotation
 #   * ctrl+s: save
+#   * tab: toggle colors
+#   * plus / minus: +-1800
+# * more shortcuts
 
 
 class MainWindow(QMainWindow):
@@ -267,6 +269,12 @@ class VideoControl(QWidget):
 
         self.shortcut_play_stop = QShortcut(Qt.Key_Space, self)
         self.shortcut_play_stop.activated.connect(self.toggle_play_stop)
+
+        self.shortcut_skip1800 = QShortcut(Qt.Key_Plus, self)
+        self.shortcut_skip1800.activated.connect(partial(self.skip, 1800))
+
+        self.shortcut_back1800 = QShortcut(Qt.Key_Minus, self)
+        self.shortcut_back1800.activated.connect(partial(self.skip, -1800))
 
         self.update_info()
 
