@@ -10,15 +10,14 @@ from PyQt5.QtWidgets import (
     QPushButton, QGridLayout, QProgressBar, QShortcut)
 from PyQt5.QtGui import (
     QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen,
-    QKeySequence)
+    QKeySequence, QPalette)
 import numpy as np
 import cv2
 
 
 # TODO
-# * organize widgets without tabs
-# * selector for annotation colors
 # * more shortcuts
+# * toggle through annotations with arrow keys
 # * display annotation hints, load from config
 # * fix annotation overwrite
 # * clean up saving mess
@@ -53,15 +52,18 @@ class CentralWidget(QWidget):
         self.canvas = ImageCanvas(self, self.annotator_config, self.annotation)
         splitter.addWidget(self.canvas)
 
-        self.tabs = QTabWidget(self)
-        self.tabs.setMinimumWidth(450)
-        self.config_editor = ConfigurationEditor(self, self.annotator_config)
-        self.tabs.addTab(self.config_editor, "Configuration")
-        self.ann_editor = AnnotationEditor(self, self.annotation, self.canvas)
-        self.tabs.addTab(self.ann_editor, "Annotation")
+        self.sidebar = QWidget(self)
+        self.sidebar.setMinimumWidth(450)
+        splitter.addWidget(self.sidebar)
+        self.sidebar_layout = QVBoxLayout()
+        self.sidebar.setLayout(self.sidebar_layout)
+
         self.video_control = VideoControl(self, self.annotation, self.canvas)
-        self.tabs.addTab(self.video_control, "Video")
-        splitter.addWidget(self.tabs)
+        self.sidebar_layout.addWidget(self.video_control)
+        self.config_editor = ConfigurationEditor(self, self.annotator_config)
+        self.sidebar_layout.addWidget(self.config_editor)
+        self.ann_editor = AnnotationEditor(self, self.annotation, self.canvas)
+        self.sidebar_layout.addWidget(self.ann_editor)
 
         policy = QSizePolicy()
         policy.setHorizontalPolicy(QSizePolicy.Maximum)
@@ -81,17 +83,30 @@ class ConfigurationEditor(QWidget):
         self.layout.setAlignment(Qt.AlignTop)
         self.setLayout(self.layout)
 
+        self.color_display = QLabel(self)
+        self.layout.addWidget(self.color_display)
+        self.color_image = QImage(420, 20, QImage.Format_ARGB32)
+
         self.color_selector_description = QLabel(self)
-        self.color_selector_description.setText("Select color:")
+        self.color_selector_description.setText("Select Color (Shortcut: Tab)")
         self.layout.addWidget(self.color_selector_description)
-        self.color_selector = QSpinBox(self)
-        # yes, we start counting at 0
-        self.color_selector.setRange(0, model.n_classes - 1)
-        self.color_selector.valueChanged.connect(self.change_active_color)
-        self.layout.addWidget(self.color_selector)
+
+        self.color_buttons = []
+        for color_idx in range(self.model.n_classes):
+            button = QPushButton("Color %d" % (color_idx + 1))
+            palette = button.palette()
+            palette.setColor(QPalette.Button, self.model.bb_colors[color_idx])
+            button.setAutoFillBackground(True)
+            button.setPalette(palette)
+            button.update()
+            button.pressed.connect(partial(self.change_active_color, color_idx))
+            self.layout.addWidget(button)
+            self.color_buttons.append(button)
 
         self.shortcut_change_active_color = QShortcut(Qt.Key_Tab, self)
         self.shortcut_change_active_color.activated.connect(self.toggle_active_color)
+
+        self.update_color_info()
 
     def change_active_color(self, color):
         self.model.active_color = color
@@ -101,7 +116,8 @@ class ConfigurationEditor(QWidget):
         self.update_color_info()
 
     def update_color_info(self):
-        self.color_selector.setValue(self.model.active_color)
+        self.color_image.fill(self.model.bb_colors[self.model.active_color])
+        self.color_display.setPixmap(QPixmap.fromImage(self.color_image))
 
 
 class AnnotationEditor(QWidget):
@@ -288,6 +304,7 @@ class ImageCanvas(QWidget):
 
         self.setWindowTitle("Image annotator")
 
+        # TODO refactor with ImageView
         self.img_view = ImageView(self)
         self.img_view.start_drag.connect(self.start_drag)
         self.img_view.drag.connect(self.drag)
