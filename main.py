@@ -276,12 +276,9 @@ class VideoControl(QWidget):
         self.layout.addWidget(self.button_stop, 6, 1)
 
         self.play_timer = QTimer(self)
-        self.button_play.pressed.connect(
-            partial(self.play_timer.start, int(self.annotation.secs_per_frame / 1000.0)))
+        self.button_play.pressed.connect(self.play)
         self.play_timer.timeout.connect(self.next_image)
-        self.button_stop.pressed.connect(self.play_timer.stop)
-
-        self.playing = False  # TODO set if button pressed
+        self.button_stop.pressed.connect(self.stop)
 
         self.shortcut_play_stop = QShortcut(Qt.Key_Space, self)
         self.shortcut_play_stop.activated.connect(self.toggle_play_stop)
@@ -291,6 +288,8 @@ class VideoControl(QWidget):
 
         self.shortcut_back1800 = QShortcut(Qt.Key_Minus, self)
         self.shortcut_back1800.activated.connect(partial(self.skip, -1800))
+
+        self.playing = False  # TODO set if button pressed
 
         self.update_info()
 
@@ -305,6 +304,14 @@ class VideoControl(QWidget):
         self.image_view.update_image()
         self.image_view.update_annotation()
         self.update_info()
+
+    def play(self):
+        self.play_timer.start(int(self.annotation.secs_per_frame / 1000.0))
+        self.playing = True
+
+    def stop(self):
+        self.play_timer.stop()
+        self.playing = False
 
     def toggle_play_stop(self):
         if self.playing:
