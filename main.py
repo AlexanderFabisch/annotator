@@ -21,14 +21,6 @@ import cv2
 # TODO
 # * fix annotation overwrite
 # * clean up saving mess
-# * document shortcuts:
-#   * space: toggle play
-#   * arrow up/down: select annotation
-#   * enter: change color
-#   * delete: delete annotation
-#   * ctrl+s: save
-#   * tab: toggle colors
-#   * plus / minus: +-1800
 # * more shortcuts
 
 
@@ -91,7 +83,7 @@ class ConfigurationEditor(QWidget):
         self.color_image = QImage(420, 20, QImage.Format_ARGB32)
 
         self.color_selector_description = QLabel(self)
-        self.color_selector_description.setText("Select Color (Shortcut: Tab)")
+        self.color_selector_description.setText("Select Color (Toggle: Tab)")
         self.layout.addWidget(self.color_selector_description)
 
         self.color_buttons = []
@@ -100,7 +92,7 @@ class ConfigurationEditor(QWidget):
             Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4, Qt.Key_5,
             Qt.Key_6, Qt.Key_7, Qt.Key_8, Qt.Key_9, Qt.Key_0]
         for color_idx in range(self.model.n_classes):
-            label = "%s (Shortcut: %s)" % (self.model.classes[color_idx],
+            label = "%s (%s)" % (self.model.classes[color_idx],
                                            QKeySequence(keys[color_idx]).toString())
             button = QPushButton(label)
             button.setStyleSheet("QPushButton { color: white; }")
@@ -151,23 +143,23 @@ class AnnotationEditor(QWidget):
         self.selector = QWidget()
         selector_layout = QHBoxLayout()
         self.selector.setLayout(selector_layout)
-        self.button_prev = QPushButton("Previous")
+        self.button_prev = QPushButton("Previous (Arrow Up)")
         self.button_prev.pressed.connect(self.select_prev)
         selector_layout.addWidget(self.button_prev)
-        self.button_next = QPushButton("Next")
+        self.button_next = QPushButton("Next (Arrow Down)")
         self.button_next.pressed.connect(self.select_next)
         selector_layout.addWidget(self.button_next)
         self.layout.addWidget(self.selector)
 
-        self.button_change_color = QPushButton("Change Color")
+        self.button_change_color = QPushButton("Change Color (Enter)")
         self.button_change_color.pressed.connect(self.change_color)
         self.layout.addWidget(self.button_change_color)
 
-        self.delete = QPushButton("Delete Selection")
+        self.delete = QPushButton("Delete Selection (Del)")
         self.delete.pressed.connect(self.delete_selection)
         self.layout.addWidget(self.delete)
 
-        self.save = QPushButton("Save Annotations")
+        self.save = QPushButton("Save Annotations (Ctrl+s)")
         self.save.pressed.connect(self.save_annotations)
         self.layout.addWidget(self.save)
 
@@ -249,7 +241,7 @@ class VideoControl(QWidget):
         self.button_skip500.pressed.connect(partial(self.skip, 500))
         self.layout.addWidget(self.button_skip500, 4, 1)
 
-        self.button_skip1800 = QPushButton("Skip 1800 Frames")
+        self.button_skip1800 = QPushButton("Skip 1800 Frames (+)")
         self.button_skip1800.pressed.connect(partial(self.skip, 1800))
         self.layout.addWidget(self.button_skip1800, 5, 1)
 
@@ -265,14 +257,14 @@ class VideoControl(QWidget):
         self.button_back500.pressed.connect(partial(self.skip, -500))
         self.layout.addWidget(self.button_back500, 4, 0)
 
-        self.button_back1800 = QPushButton("Go back 1800 Frames")
+        self.button_back1800 = QPushButton("Go back 1800 Frames (-)")
         self.button_back1800.pressed.connect(partial(self.skip, -1800))
         self.layout.addWidget(self.button_back1800, 5, 0)
 
-        self.button_play = QPushButton("Play")
+        self.button_play = QPushButton("Play (Space)")
         self.layout.addWidget(self.button_play, 6, 0)
 
-        self.button_stop = QPushButton("Stop")
+        self.button_stop = QPushButton("Stop (Space)")
         self.layout.addWidget(self.button_stop, 6, 1)
 
         self.play_timer = QTimer(self)
@@ -289,7 +281,7 @@ class VideoControl(QWidget):
         self.shortcut_back1800 = QShortcut(Qt.Key_Minus, self)
         self.shortcut_back1800.activated.connect(partial(self.skip, -1800))
 
-        self.playing = False  # TODO set if button pressed
+        self.playing = False
 
         self.update_info()
 
