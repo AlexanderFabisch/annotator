@@ -3,6 +3,7 @@ import sys
 import argparse
 import hashlib
 import yaml
+import warnings
 from functools import partial
 import csv
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject, QTimer
@@ -94,10 +95,15 @@ class ConfigurationEditor(QWidget):
         self.layout.addWidget(self.color_selector_description)
 
         self.color_buttons = []
+        self.color_shortcuts = []
+        keys = [
+            Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4, Qt.Key_5,
+            Qt.Key_6, Qt.Key_7, Qt.Key_8, Qt.Key_9, Qt.Key_0]
         for color_idx in range(self.model.n_classes):
-            button = QPushButton(self.model.classes[color_idx])
-            button.setStyleSheet(
-                "QPushButton { color: white; }")
+            label = "%s (Shortcut: %s)" % (self.model.classes[color_idx],
+                                           QKeySequence(keys[color_idx]).toString())
+            button = QPushButton(label)
+            button.setStyleSheet("QPushButton { color: white; }")
             palette = button.palette()
             palette.setColor(QPalette.Button, self.model.bb_colors[color_idx])
             button.setAutoFillBackground(True)
@@ -106,6 +112,13 @@ class ConfigurationEditor(QWidget):
             button.pressed.connect(partial(self.change_active_color, color_idx))
             self.layout.addWidget(button)
             self.color_buttons.append(button)
+
+            if color_idx >= len(keys):
+                warnings.warn("Too many classes. Cannot assign shortcut to each class.")
+                continue
+            shortcut = QShortcut(keys[color_idx], self)
+            shortcut.activated.connect(partial(self.change_active_color, color_idx))
+            self.color_shortcuts.append(shortcut)
 
         self.shortcut_change_active_color = QShortcut(Qt.Key_Tab, self)
         self.shortcut_change_active_color.activated.connect(self.toggle_active_color)
