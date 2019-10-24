@@ -1,6 +1,8 @@
 import os
 import sys
+import argparse
 import hashlib
+import yaml
 from functools import partial
 import csv
 from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject, QTimer
@@ -16,7 +18,6 @@ import cv2
 
 
 # TODO
-# * display annotation hints, load from config
 # * fix annotation overwrite
 # * clean up saving mess
 # * document shortcuts:
@@ -31,22 +32,22 @@ import cv2
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, filename, output_path):
+    def __init__(self, args):
         super(MainWindow, self).__init__()
-        self.central_widget = CentralWidget(self, filename, output_path)
+        self.central_widget = CentralWidget(self, args)
         self.setCentralWidget(self.central_widget)
         self.resize(1800, 800)  # TODO
         self.show()
 
 
 class CentralWidget(QWidget):
-    def __init__(self, parent, filename, output_path):
+    def __init__(self, parent, args):
         super(CentralWidget, self).__init__(parent)
         self.layout = QHBoxLayout()
         self.setLayout(self.layout)
 
-        self.annotator_config = AnnotatorConfigurationModel()
-        self.annotation = AnnotationModel(filename, output_path, self.annotator_config)
+        self.annotator_config = AnnotatorConfigurationModel(args.config)
+        self.annotation = AnnotationModel(args.video, args.output, self.annotator_config)
 
         splitter = QSplitter(Qt.Horizontal)
 
@@ -94,7 +95,9 @@ class ConfigurationEditor(QWidget):
 
         self.color_buttons = []
         for color_idx in range(self.model.n_classes):
-            button = QPushButton("Color %d" % (color_idx + 1))
+            button = QPushButton(self.model.classes[color_idx])
+            button.setStyleSheet(
+                "QPushButton { color: white; }")
             palette = button.palette()
             palette.setColor(QPalette.Button, self.model.bb_colors[color_idx])
             button.setAutoFillBackground(True)
@@ -111,6 +114,7 @@ class ConfigurationEditor(QWidget):
 
     def change_active_color(self, color):
         self.model.active_color = color
+        self.update_color_info()
 
     def toggle_active_color(self):
         self.model.toggle_colors()
@@ -419,9 +423,16 @@ class ImageView(QLabel):
 
 
 class AnnotatorConfigurationModel:
-    def __init__(self):
-        # TODO load configuration from file
-        self.n_classes = 2
+    def __init__(self, configfile):
+        if configfile is None:
+            config = {"classes": ["Class 1", "Class 2"]}
+        else:
+            with open(configfile, "r") as f:
+                config = yaml.safe_load(f)
+            if "classes" not in config:
+                raise Exception("Could not find class names")
+        self.n_classes = len(config["classes"])
+        self.classes = config["classes"]
 
         # configuration options
         self.bb_colors = [
@@ -602,8 +613,18 @@ class AnnotationModel:  # TODO extract VideoModel?
                 annotations_writer.writerow(row)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="Annotator")
+    parser.add_argument("video", help="Location of the video file")
+    parser.add_argument("output", help="Output directory")
+    parser.add_argument(
+        "--config", nargs="?", default=None,
+        help="Configuration file for annotator")
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    # TODO argparser
-    win = MainWindow(sys.argv[1], sys.argv[2])
+    args = parse_args()
+    win = MainWindow(args)
     sys.exit(app.exec_())
