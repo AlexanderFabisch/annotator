@@ -140,6 +140,10 @@ class AnnotationEditor(QWidget):
         self.layout.setAlignment(Qt.AlignTop)
         self.setLayout(self.layout)
 
+        widget_description = QLabel("Modify annotations")
+        widget_description.setAlignment(Qt.AlignCenter)
+        self.layout.addWidget(widget_description)
+
         self.selector = QWidget()
         selector_layout = QHBoxLayout()
         self.selector.setLayout(selector_layout)
