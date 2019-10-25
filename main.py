@@ -302,7 +302,7 @@ class VideoControl(QWidget):
         self.update_info()
 
     def play(self):
-        self.play_timer.start(int(self.annotation.secs_per_frame / 1000.0))
+        self.play_timer.start()
         self.playing = True
 
     def stop(self):
@@ -372,10 +372,8 @@ class ImageCanvas(QWidget):
         painter.drawRect(QRect(QPoint(*topleft), QPoint(*bottomright)))
 
     def _new_overlay(self, img):
-        # https://www.riverbankcomputing.com/static/Docs/PyQt4/qimage.html
         overlay = QImage(img.width(), img.height(), QImage.Format_ARGB32)
         overlay.fill(QColor(255, 255, 255, 0))
-        # https://www.riverbankcomputing.com/static/Docs/PyQt4/qcolor.html
         return overlay
 
     def _apply_and_show_overlay(self, img, overlay):
@@ -419,7 +417,6 @@ class ImageCanvas(QWidget):
         self._apply_and_show_overlay(self.original_img, overlay)
 
 
-# https://www.riverbankcomputing.com/static/Docs/PyQt4/qlabel.html
 class ImageView(QLabel):
     def __init__(self, *args, **kwargs):
         super(ImageView, self).__init__(*args, **kwargs)
