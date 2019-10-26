@@ -318,19 +318,24 @@ class VideoControl(QGroupBox):
         self.progress_bar.setValue(self.annotation.video_model.frame_idx + 1)
 
 
-class ImageCanvas(QWidget):
+class ImageCanvas(QGroupBox):
     def __init__(self, parent, config, annotation):
-        super(ImageCanvas, self).__init__(parent)
+        super(ImageCanvas, self).__init__("Video", parent)
         self.config = config
         self.annotation = annotation
+
+        self.layout = QHBoxLayout()
+        self.layout.setAlignment(Qt.AlignCenter)
+        self.setLayout(self.layout)
 
         self.setWindowTitle("Image annotator")
 
         # TODO refactor with ImageView
-        self.img_view = ImageView(self)
+        self.img_view = ImageView()
         self.img_view.start_drag.connect(self.start_drag)
         self.img_view.drag.connect(self.drag)
         self.img_view.stop_drag.connect(self.stop_drag)
+        self.layout.addWidget(self.img_view)
 
         # temporary variables
         self.started_drag = None
@@ -348,7 +353,6 @@ class ImageCanvas(QWidget):
         self._reset_overlay()
         x, y = self._apply_bounds(x, y)
 
-        # TODO could be done directly, without overlay image
         painter = QPainter()
         painter.begin(self.overlay)
         self._paint_bbs(painter)
@@ -369,6 +373,7 @@ class ImageCanvas(QWidget):
 
     def update_image(self):
         data = self.annotation.video_model.image
+        # TODO can we reuse the image from previous frames?
         self.original_img = QImage(
             data.data, data.shape[1], data.shape[0], 3 * data.shape[1],
             QImage.Format_RGB888).rgbSwapped()
@@ -398,7 +403,7 @@ class ImageCanvas(QWidget):
         self.overlay.fill(QColor(255, 255, 255, 0))
 
     def _apply_and_show_overlay(self):
-        self.img = QImage(self.original_img)
+        self.img = self.original_img.copy()
 
         painter = QPainter()
         painter.begin(self.img)
@@ -409,8 +414,8 @@ class ImageCanvas(QWidget):
 
 
 class ImageView(QLabel):
-    def __init__(self, *args, **kwargs):
-        super(ImageView, self).__init__(*args, **kwargs)
+    def __init__(self):
+        super(ImageView, self).__init__()
     
     start_drag = pyqtSignal(int, int)
     drag = pyqtSignal(int, int)
