@@ -363,11 +363,6 @@ class ImageCanvas(QWidget):
 
         self._apply_and_show_overlay()
 
-    def _draw_rect(self, painter, topleft, bottomright, color, selected=False):
-        width = 10 if selected else 5
-        painter.setPen(QPen(QBrush(self.config.bb_colors[color]), width))
-        painter.drawRect(QRect(QPoint(*topleft), QPoint(*bottomright)))
-
     def stop_drag(self, x, y):
         self.annotation.bounding_boxes.append(
             [self.started_drag, self._apply_bounds(x, y), self.config.active_color])
@@ -397,6 +392,11 @@ class ImageCanvas(QWidget):
                 painter, topleft, bottomright, color,
                 selected=self.annotation.selected_annotation == i)
             i += 1
+
+    def _draw_rect(self, painter, topleft, bottomright, color, selected=False):
+        width = 10 if selected else 5
+        painter.setPen(QPen(QBrush(self.config.bb_colors[color]), width))
+        painter.drawRect(QRect(QPoint(*topleft), QPoint(*bottomright)))
 
     def _reset_overlay(self):
         self.overlay.fill(QColor(255, 255, 255, 0))
