@@ -10,7 +10,7 @@ from PyQt5.QtCore import pyqtSignal, QRect, QPoint, Qt, QObject, QTimer
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QTabWidget, QWidget, QSpinBox,
     QLabel, QVBoxLayout, QHBoxLayout, QSplitter, QSizePolicy,
-    QPushButton, QGridLayout, QProgressBar, QShortcut)
+    QPushButton, QGridLayout, QProgressBar, QShortcut, QGroupBox)
 from PyQt5.QtGui import (
     QIcon, QPixmap, QPainter, QImage, QColor, QBrush, QPen,
     QKeySequence, QPalette)
@@ -64,9 +64,9 @@ class CentralWidget(QWidget):
         self.layout.addWidget(splitter)
 
 
-class ConfigurationEditor(QWidget):
+class ConfigurationEditor(QGroupBox):
     def __init__(self, parent, model):
-        super(ConfigurationEditor, self).__init__(parent)
+        super(ConfigurationEditor, self).__init__("Annotation", parent)
         self.model = model
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignTop)
@@ -124,19 +124,15 @@ class ConfigurationEditor(QWidget):
         self.color_display.setPixmap(QPixmap.fromImage(self.color_image))
 
 
-class AnnotationEditor(QWidget):
+class AnnotationEditor(QGroupBox):
     def __init__(self, parent, model, image_view):
-        super(AnnotationEditor, self).__init__(parent)
+        super(AnnotationEditor, self).__init__("Modify Annotations", parent)
         self.model = model
         self.image_view = image_view
 
         self.layout = QVBoxLayout()
         self.layout.setAlignment(Qt.AlignTop)
         self.setLayout(self.layout)
-
-        widget_description = QLabel("Modify annotations")
-        widget_description.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(widget_description)
 
         self.selector = QWidget()
         selector_layout = QHBoxLayout()
@@ -199,9 +195,9 @@ class AnnotationEditor(QWidget):
         self.model.save()
 
 
-class VideoControl(QWidget):
+class VideoControl(QGroupBox):
     def __init__(self, parent, annotation, image_view):
-        super(VideoControl, self).__init__(parent)
+        super(VideoControl, self).__init__("Video Control", parent)
         self.annotation = annotation
         self.image_view = image_view
 
