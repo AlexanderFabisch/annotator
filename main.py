@@ -283,6 +283,8 @@ class VideoControl(QGroupBox):
     def next_image(self):
         update_required = self.annotation.next_image()
         if not update_required:
+            if self.playing:
+                self.stop()
             return
         self.image_view.update_image()
         self.image_view.update_annotation()
