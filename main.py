@@ -18,12 +18,6 @@ import numpy as np
 import cv2
 
 
-# TODO
-# * fix annotation overwrite
-# * clean up saving mess
-# * more shortcuts
-
-
 class MainWindow(QMainWindow):
     def __init__(self, args):
         super(MainWindow, self).__init__()
