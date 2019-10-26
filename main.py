@@ -330,7 +330,6 @@ class ImageCanvas(QGroupBox):
 
         self.setWindowTitle("Image annotator")
 
-        # TODO refactor with ImageView
         self.img_view = ImageView()
         self.img_view.start_drag.connect(self.start_drag)
         self.img_view.drag.connect(self.drag)
