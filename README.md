@@ -25,7 +25,10 @@ classes:
 - name of class 1
 - name of class 2
 - name of class 3
-
+# optional: resolution of extracted images
+resolution:
+- 1280
+- 720
 ```
 
 Then run the program with

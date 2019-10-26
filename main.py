@@ -437,17 +437,19 @@ class ImageView(QLabel):
 
 class AnnotatorConfigurationModel:
     def __init__(self, configfile):
-        if configfile is None:
-            config = {"classes": ["Class 1", "Class 2"]}
-        else:
+        config = {"classes": ["Class 1", "Class 2"],
+                  "resolution": (1280, 720)}
+        if configfile is not None:
             with open(configfile, "r") as f:
                 config = yaml.safe_load(f)
             if "classes" not in config:
                 raise Exception("Could not find class names")
+
+        # TODO validate values
         self.n_classes = len(config["classes"])
         self.classes = config["classes"]
+        self.image_size = tuple(config["resolution"])
 
-        # configuration options
         self.bb_colors = [
             QColor(30, 45, 69),
             QColor(87, 52, 32),
@@ -465,7 +467,6 @@ class AnnotatorConfigurationModel:
             # TODO define more colors
         ]
 
-        # configuration
         self.active_color = 0
 
     def toggle_colors(self):
@@ -473,12 +474,11 @@ class AnnotatorConfigurationModel:
 
 
 class AnnotationModel:  # TODO extract VideoModel?
-    def __init__(self, filename, output_path, annotator_config,
-                 image_size=(1280, 720)):
+    def __init__(self, filename, output_path, annotator_config):
         self.filename = filename
         self.output_path = output_path
         self.annotator_config = annotator_config
-        self.image_size = image_size
+        self.image_size = annotator_config.image_size
         self.cap = cv2.VideoCapture(self.filename)
         self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         self.secs_per_frame = 1.0 / self.cap.get(cv2.CAP_PROP_FPS)
