@@ -214,47 +214,50 @@ class VideoControl(QGroupBox):
         self.progress_bar.setRange(1, self.annotation.video_model.n_frames)
         self.layout.addWidget(self.progress_bar, 1, 0, 1, 2)
 
+        fps = int(1.0 / self.annotation.video_model.secs_per_frame)
+
         self.msecs_per_frame_label = QLabel()
-        self.msecs_per_frame_label.setText(
-            "%d FPS" % (1.0 / self.annotation.video_model.secs_per_frame))
+        self.msecs_per_frame_label.setText("%d FPS" % fps)
         self.layout.addWidget(self.msecs_per_frame_label, 2, 0)
 
         self.duration_label = QLabel()
         self.duration_label.setText("%.3f s" % self.annotation.video_model.duration())
         self.layout.addWidget(self.duration_label, 2, 1)
 
-        self.button_next_image = QPushButton("Next Frame")
-        self.button_next_image.pressed.connect(self.next_image)
-        self.layout.addWidget(self.button_next_image, 3, 1)
-
-        # TODO magic numbers
-        self.button_skip100 = QPushButton("Skip 100 Frames")
-        self.button_skip100.pressed.connect(partial(self.skip, 100))
-        self.layout.addWidget(self.button_skip100, 4, 1)
-
-        self.button_skip500 = QPushButton("Skip 500 Frames")
-        self.button_skip500.pressed.connect(partial(self.skip, 500))
-        self.layout.addWidget(self.button_skip500, 5, 1)
-
-        self.button_skip1800 = QPushButton("Skip 1800 Frames (+)")
-        self.button_skip1800.pressed.connect(partial(self.skip, 1800))
-        self.layout.addWidget(self.button_skip1800, 6, 1)
-
         self.button_prev_image = QPushButton("Previous Frames")
         self.button_prev_image.pressed.connect(partial(self.skip, -1))
         self.layout.addWidget(self.button_prev_image, 3, 0)
 
-        self.button_back100 = QPushButton("Go back 100 Frames")
-        self.button_back100.pressed.connect(partial(self.skip, -100))
-        self.layout.addWidget(self.button_back100, 4, 0)
+        self.button_next_image = QPushButton("Next Frame")
+        self.button_next_image.pressed.connect(self.next_image)
+        self.layout.addWidget(self.button_next_image, 3, 1)
 
-        self.button_back500 = QPushButton("Go back 500 Frames")
-        self.button_back500.pressed.connect(partial(self.skip, -500))
-        self.layout.addWidget(self.button_back500, 5, 0)
+        frames_per_5_secs = fps * 5
+        self.button_skip5s = QPushButton("Skip %d Frames (5s)" % frames_per_5_secs)
+        self.button_skip5s.pressed.connect(partial(self.skip, frames_per_5_secs))
+        self.layout.addWidget(self.button_skip5s, 4, 1)
 
-        self.button_back1800 = QPushButton("Go back 1800 Frames (-)")
-        self.button_back1800.pressed.connect(partial(self.skip, -1800))
-        self.layout.addWidget(self.button_back1800, 6, 0)
+        self.button_back5s = QPushButton("Go back %d Frames (5s)" % frames_per_5_secs)
+        self.button_back5s.pressed.connect(partial(self.skip, -frames_per_5_secs))
+        self.layout.addWidget(self.button_back5s, 4, 0)
+
+        frames_per_20_secs = fps * 20
+        self.button_skip20s = QPushButton("Skip %d Frames (20s)" % frames_per_20_secs)
+        self.button_skip20s.pressed.connect(partial(self.skip, frames_per_20_secs))
+        self.layout.addWidget(self.button_skip20s, 5, 1)
+
+        self.button_back20s = QPushButton("Go back %d Frames (20s)" % frames_per_20_secs)
+        self.button_back20s.pressed.connect(partial(self.skip, -frames_per_20_secs))
+        self.layout.addWidget(self.button_back20s, 5, 0)
+
+        frames_per_60_secs = fps * 60
+        self.button_skip60s = QPushButton("Skip %d Frames (+, 60s)" % frames_per_60_secs)
+        self.button_skip60s.pressed.connect(partial(self.skip, frames_per_60_secs))
+        self.layout.addWidget(self.button_skip60s, 6, 1)
+
+        self.button_back60s = QPushButton("Go back %d Frames (-, 60s)" % frames_per_60_secs)
+        self.button_back60s.pressed.connect(partial(self.skip, -frames_per_60_secs))
+        self.layout.addWidget(self.button_back60s, 6, 0)
 
         self.button_play = QPushButton("Play (Space)")
         self.layout.addWidget(self.button_play, 7, 0)
