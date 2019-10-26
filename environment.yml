@@ -1,0 +1,9 @@
+name: annotator
+channels:
+  - conda-forge
+dependencies:
+  - python=3.7
+  - opencv
+  - pyqt
+  - pyyaml
+  - numpy
