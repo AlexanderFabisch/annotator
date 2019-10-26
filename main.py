@@ -221,15 +221,16 @@ class VideoControl(QWidget):
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setTextVisible(False)
-        self.progress_bar.setRange(1, self.annotation.n_frames)
+        self.progress_bar.setRange(1, self.annotation.video_model.n_frames)
         self.layout.addWidget(self.progress_bar, 1, 0, 1, 2)
 
         self.msecs_per_frame_label = QLabel()
-        self.msecs_per_frame_label.setText("%d FPS" % (1.0 / self.annotation.secs_per_frame))
+        self.msecs_per_frame_label.setText(
+            "%d FPS" % (1.0 / self.annotation.video_model.secs_per_frame))
         self.layout.addWidget(self.msecs_per_frame_label, 2, 0)
 
         self.duration_label = QLabel()
-        self.duration_label.setText("%.3f s" % self.annotation.duration())
+        self.duration_label.setText("%.3f s" % self.annotation.video_model.duration())
         self.layout.addWidget(self.duration_label, 2, 1)
 
         self.button_next_image = QPushButton("Next Frame")
@@ -290,13 +291,17 @@ class VideoControl(QWidget):
         self.update_info()
 
     def next_image(self):
-        self.annotation.next_image()
+        update_required = self.annotation.next_image()
+        if not update_required:
+            return
         self.image_view.update_image()
         self.image_view.update_annotation()
         self.update_info()
 
     def skip(self, frames):
-        self.annotation.skip(frames)
+        update_required = self.annotation.skip(frames)
+        if not update_required:
+            return
         self.image_view.update_image()
         self.image_view.update_annotation()
         self.update_info()
@@ -318,9 +323,9 @@ class VideoControl(QWidget):
 
     def update_info(self):
         self.n_frames_label.setText(
-            "%d / %d Frames" % (self.annotation.image_idx + 1,
-                                self.annotation.n_frames))
-        self.progress_bar.setValue(self.annotation.image_idx + 1)
+            "%d / %d Frames" % (self.annotation.video_model.frame_idx + 1,
+                                self.annotation.video_model.n_frames))
+        self.progress_bar.setValue(self.annotation.video_model.frame_idx + 1)
 
 
 class ImageCanvas(QWidget):
@@ -395,7 +400,7 @@ class ImageCanvas(QWidget):
         return min(max(x, 0), self.img.width()), min(max(y, 0), self.img.height())
 
     def update_image(self):
-        data = self.annotation.image
+        data = self.annotation.video_model.image
         self.original_img = QImage(
             data.data, data.shape[1], data.shape[0], 3 * data.shape[1],
             QImage.Format_RGB888).rgbSwapped()
@@ -473,15 +478,11 @@ class AnnotatorConfigurationModel:
         self.active_color = (self.active_color + 1) % self.n_classes
 
 
-class AnnotationModel:  # TODO extract VideoModel?
+class AnnotationModel:
     def __init__(self, filename, output_path, annotator_config):
-        self.filename = filename
+        self.video_model = VideoModel(filename, annotator_config.image_size)
         self.output_path = output_path
         self.annotator_config = annotator_config
-        self.image_size = annotator_config.image_size
-        self.cap = cv2.VideoCapture(self.filename)
-        self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        self.secs_per_frame = 1.0 / self.cap.get(cv2.CAP_PROP_FPS)
         self.image_idx = -1
         self.image_filename = None
         if not os.path.exists(self.output_path):
@@ -492,33 +493,21 @@ class AnnotationModel:  # TODO extract VideoModel?
         self.bounding_boxes = []
         self.next_image()
 
-    def duration(self):
-        return self.n_frames * self.secs_per_frame
-
     def next_image(self):
         self.reset_annotation()
-        self._update_image_index(self.image_idx + 1)
-        if self.image_idx >= self.n_frames:
-            self.image_idx -= 1
-            return
-        self._read_image()
+        last_frame_idx = self.image_idx
+        self.image_idx = self.video_model.next_frame()
+        self._update_image_filename()
         self._load_annotation_of_current_image()
+        return last_frame_idx != self.image_idx
 
     def skip(self, skip_frames):
         self.reset_annotation()
-        self._update_image_index(self.image_idx + skip_frames)
-        if self.image_idx >= self.n_frames:
-            self.image_idx = self.n_frames - 1
-        elif self.image_idx < 0:
-            self.image_idx = 0
-        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.image_idx)
-        self._read_image()
+        last_frame_idx = self.image_idx
+        self.image_idx = self.video_model.jump(skip_frames)
+        self._update_image_filename()
         self._load_annotation_of_current_image()
-
-    def _read_image(self):
-        assert self.cap.isOpened()
-        ret, image = self.cap.read()  # TODO ret?
-        self.image = cv2.resize(image, self.image_size)
+        return last_frame_idx != self.image_idx
 
     def reset_annotation(self):
         self._save_annotations_as_rows()
@@ -535,17 +524,15 @@ class AnnotationModel:  # TODO extract VideoModel?
             row = (self.image_filename, self.image_idx,
                    x_min, y_min, x_max, y_max, bb[2])
             self.rows.append(row)
-        # TODO control when image is written... together with annotations.csv
+
         if (len(self.bounding_boxes) > 0 and
                 self.image_filename is not None and
                 not os.path.exists(self.image_filename)):
-            cv2.imwrite(self.image_filename, self.image)
+            self.video_model.buffer_frame(self.image_filename)
 
-    def _update_image_index(self, idx):
-        self.image_idx = idx
-
+    def _update_image_filename(self):
         m = hashlib.md5()
-        m.update(self.filename.encode())
+        m.update(self.video_model.filename.encode())
         identifier = m.hexdigest()
         self.image_filename = os.path.join(
             self.output_path,
@@ -616,14 +603,66 @@ class AnnotationModel:  # TODO extract VideoModel?
 
     def save(self):
         if len(self.bounding_boxes) > 0 and not os.path.exists(self.image_filename):
-            cv2.imwrite(self.image_filename, self.image)
-
+            self.video_model.buffer_frame(self.image_filename)
         self._save_annotations_as_rows()
+
+        self.video_model.write_buffer()
 
         with open(self.annotations_filename, "w") as f:
             annotations_writer = csv.writer(f, delimiter=",")
             for row in self.rows:
                 annotations_writer.writerow(row)
+
+
+class VideoModel:
+    def __init__(self, filename, image_size):
+        self.filename = filename
+        self.image_size = image_size
+        self.cap = cv2.VideoCapture(self.filename)
+        self.n_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+        self.secs_per_frame = 1.0 / self.cap.get(cv2.CAP_PROP_FPS)
+        self.frame_idx = -1
+        self.frame_buffer = {}
+        # TODO VideoCapture.release() on shutdown
+
+    def duration(self):
+        return self.n_frames * self.secs_per_frame
+
+    def next_frame(self):
+        self.frame_idx += 1
+        success = self._read_image()
+        if not success:
+            self.frame_idx -= 1
+        return self.frame_idx
+
+    def jump(self, skip_frames):
+        last_frame_idx = self.frame_idx
+        self.frame_idx += skip_frames
+        if self.frame_idx >= self.n_frames:
+            self.frame_idx = self.n_frames - 1
+        elif self.frame_idx < 0:
+            self.frame_idx = 0
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_idx)
+
+        success = self._read_image()
+        if not success:
+            self.frame_idx = last_frame_idx
+        return self.frame_idx
+
+    def _read_image(self):
+        assert self.cap.isOpened()
+        success, image = self.cap.read()
+        if success:
+            self.image = cv2.resize(image, self.image_size)
+        return success
+
+    def buffer_frame(self, filename):
+        self.frame_buffer[self.frame_idx] = (filename, self.image)
+
+    def write_buffer(self):
+        for filename, image in self.frame_buffer.values():
+            cv2.imwrite(filename, image)
+        self.frame_buffer = {}
 
 
 def parse_args():
