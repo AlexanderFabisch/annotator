@@ -274,10 +274,10 @@ class VideoControl(QGroupBox):
         self.shortcut_play_stop.activated.connect(self.toggle_play_stop)
 
         self.shortcut_skip1800 = QShortcut(Qt.Key_Plus, self)
-        self.shortcut_skip1800.activated.connect(partial(self.skip, 1800))
+        self.shortcut_skip1800.activated.connect(partial(self.skip, frames_per_60_secs))
 
         self.shortcut_back1800 = QShortcut(Qt.Key_Minus, self)
-        self.shortcut_back1800.activated.connect(partial(self.skip, -1800))
+        self.shortcut_back1800.activated.connect(partial(self.skip, -frames_per_60_secs))
 
         self.playing = False
 
