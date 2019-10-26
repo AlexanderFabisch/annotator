@@ -339,7 +339,7 @@ class ImageCanvas(QWidget):
         # temporary variables
         self.started_drag = None
         self.overlay = QImage(
-            self.config.image_size[0], self.config.image_size[0],
+            self.config.image_size[0], self.config.image_size[1],
             QImage.Format_ARGB32)
 
         self.update_image()
@@ -355,36 +355,18 @@ class ImageCanvas(QWidget):
         # TODO could be done directly, without overlay image
         painter = QPainter()
         painter.begin(self.overlay)
-        i = 0
-        for topleft, bottomright, color in self.annotation.bounding_boxes:
-            self._draw_rect(
-                painter, topleft, bottomright, color,
-                selected=self.annotation.selected_annotation == i)
-            i += 1
+        self._paint_bbs(painter)
         self._draw_rect(
             painter, self.started_drag, (x, y), self.config.active_color,
             selected=False)
         painter.end()
 
-        self._apply_and_show_overlay(self.original_img, self.overlay)
+        self._apply_and_show_overlay()
 
     def _draw_rect(self, painter, topleft, bottomright, color, selected=False):
         width = 10 if selected else 5
         painter.setPen(QPen(QBrush(self.config.bb_colors[color]), width))
         painter.drawRect(QRect(QPoint(*topleft), QPoint(*bottomright)))
-
-    def _reset_overlay(self):
-        self.overlay.fill(QColor(255, 255, 255, 0))
-
-    def _apply_and_show_overlay(self, img, overlay):
-        self.img = QImage(img)
-
-        painter = QPainter()
-        painter.begin(self.img)
-        painter.drawImage(0, 0, overlay)
-        painter.end()
-
-        self.img_view.setPixmap(QPixmap.fromImage(self.img))
 
     def stop_drag(self, x, y):
         self.annotation.bounding_boxes.append(
@@ -400,21 +382,34 @@ class ImageCanvas(QWidget):
             data.data, data.shape[1], data.shape[0], 3 * data.shape[1],
             QImage.Format_RGB888).rgbSwapped()
 
-        self._reset_overlay()
-        self._apply_and_show_overlay(self.original_img, self.overlay)
-
     def update_annotation(self):
         self._reset_overlay()
         painter = QPainter()
         painter.begin(self.overlay)
+        self._paint_bbs(painter)
+        painter.end()
+        self._apply_and_show_overlay()
+
+    def _paint_bbs(self, painter):
         i = 0
         for topleft, bottomright, color in self.annotation.bounding_boxes:
             self._draw_rect(
                 painter, topleft, bottomright, color,
                 selected=self.annotation.selected_annotation == i)
             i += 1
+
+    def _reset_overlay(self):
+        self.overlay.fill(QColor(255, 255, 255, 0))
+
+    def _apply_and_show_overlay(self):
+        self.img = QImage(self.original_img)
+
+        painter = QPainter()
+        painter.begin(self.img)
+        painter.drawImage(0, 0, self.overlay)
         painter.end()
-        self._apply_and_show_overlay(self.original_img, self.overlay)
+
+        self.img_view.setPixmap(QPixmap.fromImage(self.img))
 
 
 class ImageView(QLabel):
