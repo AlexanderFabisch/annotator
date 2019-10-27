@@ -233,29 +233,29 @@ class VideoControl(QGroupBox):
         self.layout.addWidget(self.button_next_image, 3, 1)
 
         frames_per_5_secs = fps * 5
-        self.button_skip5s = QPushButton("Skip %d Frames (5s)" % frames_per_5_secs)
+        self.button_skip5s = QPushButton("Skip %d Frames / 5s" % frames_per_5_secs)
         self.button_skip5s.pressed.connect(partial(self.skip, frames_per_5_secs))
         self.layout.addWidget(self.button_skip5s, 4, 1)
 
-        self.button_back5s = QPushButton("Go back %d Frames (5s)" % frames_per_5_secs)
+        self.button_back5s = QPushButton("Go back %d Frames / 5s" % frames_per_5_secs)
         self.button_back5s.pressed.connect(partial(self.skip, -frames_per_5_secs))
         self.layout.addWidget(self.button_back5s, 4, 0)
 
         frames_per_20_secs = fps * 20
-        self.button_skip20s = QPushButton("Skip %d Frames (20s)" % frames_per_20_secs)
+        self.button_skip20s = QPushButton("Skip %d Frames / 20s" % frames_per_20_secs)
         self.button_skip20s.pressed.connect(partial(self.skip, frames_per_20_secs))
         self.layout.addWidget(self.button_skip20s, 5, 1)
 
-        self.button_back20s = QPushButton("Go back %d Frames (20s)" % frames_per_20_secs)
+        self.button_back20s = QPushButton("Go back %d Frames / 20s" % frames_per_20_secs)
         self.button_back20s.pressed.connect(partial(self.skip, -frames_per_20_secs))
         self.layout.addWidget(self.button_back20s, 5, 0)
 
         frames_per_60_secs = fps * 60
-        self.button_skip60s = QPushButton("Skip %d Frames (+, 60s)" % frames_per_60_secs)
+        self.button_skip60s = QPushButton("Skip %d Frames / 60s (+)" % frames_per_60_secs)
         self.button_skip60s.pressed.connect(partial(self.skip, frames_per_60_secs))
         self.layout.addWidget(self.button_skip60s, 6, 1)
 
-        self.button_back60s = QPushButton("Go back %d Frames (-, 60s)" % frames_per_60_secs)
+        self.button_back60s = QPushButton("Go back %d Frames / 60s (-)" % frames_per_60_secs)
         self.button_back60s.pressed.connect(partial(self.skip, -frames_per_60_secs))
         self.layout.addWidget(self.button_back60s, 6, 0)
 
