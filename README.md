@@ -2,6 +2,16 @@
 
 This program annotates video files for object detection.
 
+## Example
+
+![Big Buck Bunny in video annotator](doc/annotator.png)
+
+This image shows a part of the video
+[Big Buck Bunny](http://bbb3d.renderfarming.net/)
+(released under [CC-BY 3.0](https://creativecommons.org/licenses/by/3.0/))
+in the video annotator. Ears and hands of the rabbit are annotated
+with bounding boxes.
+
 ## Install
 
 The recommended way to install the dependencies of this tool is conda.
