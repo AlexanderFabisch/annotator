@@ -50,8 +50,8 @@ You can switch between colors / classes on the right side. You can draw
 bounding boxes with your mouse directly on the image. Shortcuts for
 some actions are usually given in brackets, for example `Play (Space)`
 tells you that the space key will start playing the video. Do not forget
-to save your annotations in the end! All images are buffered until
-you press save. If you run out of memory you can free it by saving
+to save your annotations in the end! All annotated images are buffered
+until you press save. If you run out of memory you can free it by saving
 from time to time.
 
 ## Output
