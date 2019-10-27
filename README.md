@@ -14,16 +14,17 @@ with bounding boxes.
 
 ## Install
 
-The recommended way to install the dependencies of this tool is conda.
-We provide a conda environment.yml. After cloning this repository
+The recommended way to install the dependencies of this tool is conda
+([installation instructions](https://docs.conda.io/projects/conda/en/latest/user-guide/install/index.html)).
+We provide an environment.yml for conda. After cloning this repository
 you can run
 
     conda env create -f environment.yml
 
 to create a conda environment with all dependencies.
-If you do not want to use conda you can take a look at the file to find
+If you do not want to use conda you can take a look at this file to find
 out which dependencies we need. Note that some libraries (OpenCV, PyQt)
-cannot be installed only with pip.
+cannot be installed with pip alone.
 
 ## Quick Start
 
