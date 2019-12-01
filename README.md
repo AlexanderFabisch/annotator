@@ -71,3 +71,8 @@ column contains the frame index in the video file. The bounding box is
 given in the next four columns by upper left x and y coordinates and
 lower right x and y coordinates. The last line contains the index of the
 assigned class.
+
+## Example
+
+A more detailed example on how this tool can be used to train an object detection
+net can be found [here](examples/README.md).
