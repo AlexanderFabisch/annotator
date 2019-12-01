@@ -95,3 +95,7 @@ You can create a video from the files, for example, with mencoder under linux:
 
 Note that the predictions will probably still contain a lot of false positives
 since we only trained for 2000 iterations and with a very small dataset.
+
+The result can be seen here:
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/OMUira-DD60" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
