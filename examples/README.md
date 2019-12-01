@@ -60,16 +60,28 @@ training data good enough:
 
 In my case the output looks like this:
 
-<img src="doc/Figure_1.png" width=50% />
-<img src="doc/Figure_2.png" width=50% />
-<img src="doc/Figure_3.png" width=50% />
-<img src="doc/Figure_4.png" width=50% />
-<img src="doc/Figure_5.png" width=50% />
-<img src="doc/Figure_6.png" width=50% />
-<img src="doc/Figure_7.png" width=50% />
-<img src="doc/Figure_8.png" width=50% />
-<img src="doc/Figure_9.png" width=50% />
-<img src="doc/Figure_10.png" width=50% />
+<table>
+<tr>
+<td><img src="doc/Figure_1.png" width=50% /></td>
+<td><img src="doc/Figure_2.png" width=50% /></td>
+</tr>
+<tr>
+<td><img src="doc/Figure_3.png" width=50% /></td>
+<td><img src="doc/Figure_4.png" width=50% /></td>
+</tr>
+<tr>
+<td><img src="doc/Figure_5.png" width=50% /></td>
+<td><img src="doc/Figure_6.png" width=50% /></td>
+</tr>
+<tr>
+<td><img src="doc/Figure_7.png" width=50% /></td>
+<td><img src="doc/Figure_8.png" width=50% /></td>
+</tr>
+<tr>
+<td><img src="doc/Figure_9.png" width=50% /></td>
+<td><img src="doc/Figure_10.png" width=50% /></td>
+</tr>
+</table>
 
 We can also make predictions for the whole video and save them to files:
 
