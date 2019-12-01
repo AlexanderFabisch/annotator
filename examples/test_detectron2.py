@@ -93,6 +93,8 @@ def parse_args():
 
 def cv2_imshow(im):
     plt.figure(figsize=(16, 9))
+    plt.xticks(())
+    plt.yticks(())
     plt.imshow(im[:, :, (2, 1, 0)])
 
 

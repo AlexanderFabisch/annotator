@@ -60,7 +60,16 @@ training data good enough:
 
 In my case the output looks like this:
 
-**TODO**
+![Figure 1](Figure_1.png)
+![Figure 2](Figure_2.png)
+![Figure 3](Figure_3.png)
+![Figure 4](Figure_4.png)
+![Figure 5](Figure_5.png)
+![Figure 6](Figure_6.png)
+![Figure 7](Figure_7.png)
+![Figure 8](Figure_8.png)
+![Figure 9](Figure_9.png)
+![Figure 10](Figure_10.png)
 
 We can also make predictions for the whole video and save them to files:
 
