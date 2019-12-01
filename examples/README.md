@@ -53,8 +53,10 @@ parameter. Make sure to download the corresponding initial weights from the mode
 
 Detectron 2 will store the final weights in the folder `output/model_final.pth`.
 
-Now that we refined the model for a couple of iteration we can check if it fits the
-training data good enough:
+Now that we refined the model for a couple of iteration we can check if it
+fits the training data good enough. The following script will display ten
+random images from the training set. The original labels and the prediction
+will be displayed. The percentage indicates the certainty of the model.
 
     python examples/test_detectron2.py --n_samples 10 --model_weights output/model_final.pth --config bbb_config.yml . bbb_dataset/
 
