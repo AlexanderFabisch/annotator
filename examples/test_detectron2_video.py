@@ -11,7 +11,7 @@ setup_logger()
 from detectron2.engine import DefaultPredictor
 from detectron2.engine import DefaultTrainer
 from detectron2.config import get_cfg
-from detectron2.utils.visualizer import Visualizer
+from detectron2.utils.video_visualizer import VideoVisualizer
 from detectron2.utils.visualizer import ColorMode
 from detectron2.data import DatasetCatalog
 from detectron2.data import MetadataCatalog
@@ -60,17 +60,15 @@ def main():
 
     cap = cv2.VideoCapture(args.video)
     n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    vis = VideoVisualizer(metadata=custom_metadata)
     for i in tqdm.tqdm(range(0, n_frames, args.skip_frames)):
         assert cap.isOpened()
         cap.set(cv2.CAP_PROP_POS_FRAMES, i)
         success, image = cap.read()
         assert success
-        vis = Visualizer(image[:, :, ::-1],
-            metadata=custom_metadata, 
-            scale=0.8
-        )
         outputs = predictor(image)
-        v = vis.draw_instance_predictions(outputs["instances"].to("cpu"))
+        v = vis.draw_instance_predictions(
+            image[:, :, ::-1], outputs["instances"].to("cpu"))
         filename = os.path.join(args.output, "prediction_%09d.jpg" % i)
         cv2.imwrite(filename, v.get_image()[:, :, ::-1])
     plt.show()
