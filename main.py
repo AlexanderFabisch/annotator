@@ -235,28 +235,40 @@ class VideoControl(QGroupBox):
         frames_per_5_secs = fps * 5
         self.button_skip5s = QPushButton("Skip %d Frames / 5s" % frames_per_5_secs)
         self.button_skip5s.pressed.connect(partial(self.skip, frames_per_5_secs))
+        if not self.annotation.video_model.supports_jumps():
+            self.button_skip5s.setEnabled(False)
         self.layout.addWidget(self.button_skip5s, 4, 1)
 
         self.button_back5s = QPushButton("Go back %d Frames / 5s" % frames_per_5_secs)
         self.button_back5s.pressed.connect(partial(self.skip, -frames_per_5_secs))
+        if not self.annotation.video_model.supports_jumps():
+            self.button_back5s.setEnabled(False)
         self.layout.addWidget(self.button_back5s, 4, 0)
 
         frames_per_20_secs = fps * 20
         self.button_skip20s = QPushButton("Skip %d Frames / 20s" % frames_per_20_secs)
         self.button_skip20s.pressed.connect(partial(self.skip, frames_per_20_secs))
+        if not self.annotation.video_model.supports_jumps():
+            self.button_skip20s.setEnabled(False)
         self.layout.addWidget(self.button_skip20s, 5, 1)
 
         self.button_back20s = QPushButton("Go back %d Frames / 20s" % frames_per_20_secs)
         self.button_back20s.pressed.connect(partial(self.skip, -frames_per_20_secs))
+        if not self.annotation.video_model.supports_jumps():
+            self.button_back20s.setEnabled(False)
         self.layout.addWidget(self.button_back20s, 5, 0)
 
         frames_per_60_secs = fps * 60
         self.button_skip60s = QPushButton("Skip %d Frames / 60s (+)" % frames_per_60_secs)
         self.button_skip60s.pressed.connect(partial(self.skip, frames_per_60_secs))
+        if not self.annotation.video_model.supports_jumps():
+            self.button_skip60s.setEnabled(False)
         self.layout.addWidget(self.button_skip60s, 6, 1)
 
         self.button_back60s = QPushButton("Go back %d Frames / 60s (-)" % frames_per_60_secs)
         self.button_back60s.pressed.connect(partial(self.skip, -frames_per_60_secs))
+        if not self.annotation.video_model.supports_jumps():
+            self.button_back60s.setEnabled(False)
         self.layout.addWidget(self.button_back60s, 6, 0)
 
         self.button_play = QPushButton("Play (Space)")
@@ -475,7 +487,10 @@ class AnnotatorConfigurationModel:
 
 class AnnotationModel:
     def __init__(self, filename, output_path, annotator_config):
-        self.video_model = VideoModel(filename, annotator_config.image_size)
+        if filename is None:
+            self.video_model = DatasetModel(output_path)
+        else:
+            self.video_model = VideoModel(filename, annotator_config.image_size)
         self.output_path = output_path
         self.annotator_config = annotator_config
         self.image_idx = -1
@@ -526,12 +541,16 @@ class AnnotationModel:
             self.video_model.buffer_frame(self.image_filename)
 
     def _update_image_filename(self):
-        m = hashlib.md5()
-        m.update(self.video_model.filename.encode())
-        identifier = m.hexdigest()
-        self.image_filename = os.path.join(
-            self.output_path,
-            "annotated_%s_%08d.jpg" % (identifier, self.image_idx))
+        if self.video_model.image_filename is not None:
+            self.image_filename = self.video_model.image_filename
+        else:
+            m = hashlib.md5()
+            m.update(self.video_model.filename.encode())
+            identifier = m.hexdigest()
+            self.image_filename = os.path.join(
+                self.output_path,
+                "annotated_%s_%08d.jpg" % (identifier, self.image_idx))
+            self.video_model.image_filename = self.image_filename
 
     def _load_annotation_of_current_image(self):
         for row in self.rows:
@@ -578,15 +597,7 @@ class AnnotationModel:
             self.selected_annotation = None
 
     def load(self):
-        if os.path.exists(self.annotations_filename):
-            with open(self.annotations_filename, "r") as f:
-                annotations_reader = csv.reader(f, delimiter=",")
-                self.rows = [self._convert_row(r) for r in annotations_reader]
-        else:
-            self.rows = []
-
-    def _convert_row(self, row):
-        return [row[0]] + list(map(int, map(float, row[1:])))
+        self.rows = load_annotations(self.annotations_filename)
 
     def _remove_entries_from_this_image(self):
         rows_to_delete = []
@@ -598,7 +609,7 @@ class AnnotationModel:
 
     def save(self):
         if len(self.bounding_boxes) > 0 and not os.path.exists(self.image_filename):
-            self.video_model.buffer_frame(self.image_filename)
+            self.video_model.buffer_frame()
         self._save_annotations_as_rows()
 
         self.video_model.write_buffer()
@@ -618,10 +629,14 @@ class VideoModel:
         self.secs_per_frame = 1.0 / self.cap.get(cv2.CAP_PROP_FPS)
         self.frame_idx = -1
         self.frame_buffer = {}
+        self.image_filename = None
         # TODO VideoCapture.release() on shutdown
 
     def duration(self):
         return self.n_frames * self.secs_per_frame
+
+    def supports_jumps(self):
+        return True
 
     def next_frame(self):
         self.frame_idx += 1
@@ -651,8 +666,8 @@ class VideoModel:
             self.image = cv2.resize(image, self.image_size)
         return success
 
-    def buffer_frame(self, filename):
-        self.frame_buffer[self.frame_idx] = (filename, self.image)
+    def buffer_frame(self):
+        self.frame_buffer[self.frame_idx] = (self.image_filename, self.image)
 
     def write_buffer(self):
         for filename, image in self.frame_buffer.values():
@@ -660,10 +675,87 @@ class VideoModel:
         self.frame_buffer = {}
 
 
+class DatasetModel:
+    def __init__(self, output_path):
+        annotations_filename = os.path.join(
+            output_path, "annotations.csv")
+        self.rows = self._sort_rows(load_annotations(annotations_filename))
+        self.n_frames = 1 + max([row[1] for row in self.rows])
+        self.secs_per_frame = 1.0
+        self.row_idx = -1
+        self.frame_idx = -1
+        self.frame_buffer = {}
+        self.image_filename = None
+
+    def _sort_rows(self, rows):
+        return list(sorted(rows))
+
+    def duration(self):
+        return self.n_frames * self.secs_per_frame
+
+    def supports_jumps(self):
+        return False
+
+    def next_frame(self):
+        while True:
+            self.row_idx += 1
+            if self.row_idx >= len(self.rows):
+                self.row_idx -= 1
+                break
+            if self.image_filename != self.rows[self.row_idx][0]:
+                break
+        self.image_filename, self.frame_idx = self.rows[self.row_idx][:2]
+        self._read_image()
+        return self.frame_idx
+
+    def jump(self, skip_frames):
+        if skip_frames != -1:
+            warnings.warn("Skipping frames is not supported.")
+            return self.frame_idx
+
+        while True:
+            self.row_idx -= 1
+            if self.row_idx < 0:
+                self.row_idx += 1
+                break
+            if self.image_filename != self.rows[self.row_idx][0]:
+                break
+        self.image_filename, self.frame_idx = self.rows[self.row_idx][:2]
+        self._read_image()
+        return self.frame_idx
+
+    def _read_image(self):
+        assert os.path.exists(self.image_filename)
+        self.image = cv2.imread(self.image_filename, cv2.IMREAD_COLOR)
+
+    def buffer_frame(self):
+        self.frame_buffer[self.frame_idx] = (self.image_filename, self.image)
+
+    def write_buffer(self):
+        for filename, image in self.frame_buffer.values():
+            cv2.imwrite(filename, image)
+        self.frame_buffer = {}
+
+
+def load_annotations(filename):
+    if os.path.exists(filename):
+        with open(filename, "r") as f:
+            annotations_reader = csv.reader(f, delimiter=",")
+            return [_convert_row(r) for r in annotations_reader]
+    else:
+        return []
+
+
+def _convert_row(row):
+    return [row[0]] + list(map(int, map(float, row[1:])))
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Annotator")
-    parser.add_argument("video", help="Location of the video file")
     parser.add_argument("output", help="Output directory")
+    parser.add_argument(
+        "video", nargs="?", default=None,
+        help="Location of the video file")
     parser.add_argument(
         "--config", nargs="?", default=None,
         help="Configuration file for annotator")
