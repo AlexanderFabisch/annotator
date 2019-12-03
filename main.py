@@ -538,7 +538,7 @@ class AnnotationModel:
         if (len(self.bounding_boxes) > 0 and
                 self.image_filename is not None and
                 not os.path.exists(self.image_filename)):
-            self.video_model.buffer_frame(self.image_filename)
+            self.video_model.buffer_frame()
 
     def _update_image_filename(self):
         if self.video_model.image_filename is not None:
@@ -677,18 +677,22 @@ class VideoModel:
 
 class DatasetModel:
     def __init__(self, output_path):
+        self.output_path = output_path
         annotations_filename = os.path.join(
             output_path, "annotations.csv")
-        self.rows = self._sort_rows(load_annotations(annotations_filename))
-        self.n_frames = 1 + max([row[1] for row in self.rows])
+        self.rows = load_annotations(annotations_filename)
+        self.n_frames = len(self.rows)
         self.secs_per_frame = 1.0
         self.row_idx = -1
-        self.frame_idx = -1
         self.frame_buffer = {}
         self.image_filename = None
 
-    def _sort_rows(self, rows):
-        return list(sorted(rows))
+    @property
+    def frame_idx(self):
+        if self.row_idx < 0:
+            return -1
+        else:
+            return self.rows[self.row_idx][1]
 
     def duration(self):
         return self.n_frames * self.secs_per_frame
@@ -702,9 +706,10 @@ class DatasetModel:
             if self.row_idx >= len(self.rows):
                 self.row_idx -= 1
                 break
-            if self.image_filename != self.rows[self.row_idx][0]:
+            if (self.image_filename is None or
+                    self.image_filename != self.rows[self.row_idx][0]):
                 break
-        self.image_filename, self.frame_idx = self.rows[self.row_idx][:2]
+        self.image_filename = self.rows[self.row_idx][0]
         self._read_image()
         return self.frame_idx
 
@@ -720,13 +725,20 @@ class DatasetModel:
                 break
             if self.image_filename != self.rows[self.row_idx][0]:
                 break
-        self.image_filename, self.frame_idx = self.rows[self.row_idx][:2]
+        self.image_filename = self.rows[self.row_idx][0]
         self._read_image()
         return self.frame_idx
 
+    def _correct_image_path(self, image_filename):
+        splitted_path = image_filename.split(os.sep)
+        filename = splitted_path[-1]
+        return os.path.join(self.output_path, filename)
+
     def _read_image(self):
-        assert os.path.exists(self.image_filename)
-        self.image = cv2.imread(self.image_filename, cv2.IMREAD_COLOR)
+        image_filename = self._correct_image_path(self.image_filename)
+        if not os.path.exists(image_filename):
+            raise FileExistsError(image_filename)
+        self.image = cv2.imread(image_filename, cv2.IMREAD_COLOR)
 
     def buffer_frame(self):
         self.frame_buffer[self.frame_idx] = (self.image_filename, self.image)
@@ -741,13 +753,17 @@ def load_annotations(filename):
     if os.path.exists(filename):
         with open(filename, "r") as f:
             annotations_reader = csv.reader(f, delimiter=",")
-            return [_convert_row(r) for r in annotations_reader]
+            return _sort_rows([_convert_row(r) for r in annotations_reader])
     else:
         return []
 
 
 def _convert_row(row):
     return [row[0]] + list(map(int, map(float, row[1:])))
+
+
+def _sort_rows(rows):
+    return list(sorted(rows))
 
 
 def parse_args():
