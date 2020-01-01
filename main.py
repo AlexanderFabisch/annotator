@@ -661,6 +661,7 @@ class VideoModel:
 
     def _read_image(self):
         assert self.cap.isOpened()
+        self.image_filename = None
         success, image = self.cap.read()
         if success:
             self.image = cv2.resize(image, self.image_size)

@@ -42,7 +42,7 @@ def main():
     cfg.SOLVER.BASE_LR = 0.00025
     cfg.SOLVER.MAX_ITER = 50000
     cfg.MODEL.ROI_HEADS.BATCH_SIZE_PER_IMAGE = 128   # faster, and good enough for this toy dataset
-    cfg.MODEL.ROI_HEADS.NUM_CLASSES = len(classes)
+    cfg.MODEL.ROI_HEADS.NUM_CLASSES = n_classes
     if args.model_weights is None:
         cfg.MODEL.WEIGHTS = os.path.join(cfg.OUTPUT_DIR, "model_final.pth")
     else:
